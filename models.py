@@ -19,6 +19,10 @@ from sqlalchemy.orm import (
     relationship
 )
 
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+
+pass_hasher = PasswordHasher()
 # -------------------------------------------------------------------------
 # 1. Base class for all models
 # -------------------------------------------------------------------------
@@ -58,6 +62,7 @@ class User(Base):
     email:    Mapped[str]  = mapped_column(String(100), nullable=False, unique=True)
 
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
 
     # Relations
     events_support: Mapped[List["Event"]] = relationship(back_populates="support_contact", cascade="all, delete-orphan")
@@ -65,6 +70,15 @@ class User(Base):
 
     def __repr__(self) -> str:
         return f"User(id={self.id}, fullname={self.fullname!r}, email={self.email!r}, role={self.role})"
+
+    def set_password(self, password: str) -> None:
+        self.password_hash = pass_hasher.hash(password)
+
+    def check_password(self, password: str) -> bool:
+        try:
+            return pass_hasher.verify(self.password_hash ,password)
+        except VerifyMismatchError:
+            return False
 
 # -------------------------------------------------------------------------
 # 4. Client model
