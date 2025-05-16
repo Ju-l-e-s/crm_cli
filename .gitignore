@@ -13,3 +13,6 @@ venv/
 #poetry
 poetry.lock
 
+# coverage
+.coverage
+htmlcov/
