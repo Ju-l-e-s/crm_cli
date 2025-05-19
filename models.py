@@ -52,6 +52,7 @@ class User(Base):
         fullname (str): Full name of the user.
         email (str): Unique email address.
         role (UserRole): User role (commercial, support, or gestion).
+        password_hash (str): Hashed password of the user.
         clients (List[Client]): Clients managed by the commercial user.
         events_support (List[Event]): Events the user supports.
     """
@@ -79,6 +80,7 @@ class User(Base):
             return pass_hasher.verify(self.password_hash ,password)
         except VerifyMismatchError:
             return False
+
 
 # -------------------------------------------------------------------------
 # 4. Client model

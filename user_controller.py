@@ -34,7 +34,23 @@ class UserController:
         except Exception as e:
             self.session.rollback()
             raise ValueError(f"Could not create user: {e}") from e
+    def authenticate(self, email: str, password: str) -> User:
+        """
+        Authenticates a user based on email and password.
 
+        :param email: The email of the user to authenticate.
+        :param password: The password of the user to authenticate.
+        :return: The authenticated user.
+        :raises ValueError: If the user is not found or if the password is incorrect.
+        """
+        user = self.session.query(User).filter(User.email == email).first()
+        if not user:
+            raise ValueError("User not found.")
+
+        if not user.check_password(password):
+            raise ValueError("Wrong password.")
+
+        return user
 
 if __name__ == "__main__":
     with Session(engine) as session:

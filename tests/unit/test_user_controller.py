@@ -27,3 +27,20 @@ def test_create_user_duplicate_email(session):
             password="AnotherPass123"
         )
     assert "Could not create user" in str(excinfo.value)
+
+def test_authenticate_success(session, seeded_user):
+    controller = UserController(session)
+    user = controller.authenticate("test@email.com", "CorrectPassword123")
+    assert user.email == "test@email.com"
+
+def test_authenticate_wrong_password(session, seeded_user):
+    controller = UserController(session)
+    with pytest.raises(ValueError) as excinfo:
+        controller.authenticate("test@email.com", "WrongPassword123")
+    assert "Wrong password" in str(excinfo.value)
+
+def test_authenticate_user_not_found(session):
+    controller = UserController(session)
+    with pytest.raises(ValueError) as excinfo:
+        controller.authenticate("unknown@email.com", "AnyPass123")
+    assert "User not found" in str(excinfo.value)

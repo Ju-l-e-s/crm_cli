@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from models import Base
+from models import Base, User, UserRole
 
 @pytest.fixture
 def session():
@@ -18,3 +18,16 @@ def user_data():
         "role": "gestion",
         "password": "Azertyuiop123"
     }
+
+@pytest.fixture
+def seeded_user(session):
+    user = User(
+        fullname="Test User",
+        email="test@email.com",
+        role=UserRole.GESTION
+    )
+    user.set_password("CorrectPassword123")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
