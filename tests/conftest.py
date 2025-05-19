@@ -1,7 +1,9 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from models import Base, User, UserRole
+from models.base import Base
+from models.user import User
+from models.user_role import UserRole
 
 @pytest.fixture
 def session():

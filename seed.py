@@ -1,10 +1,15 @@
 from sqlalchemy import create_engine
-from models import User, UserRole, Client, Contract, Event
+
+from models.user import User
+from models.user_role import UserRole
+from models.client import Client
+from models.contract import Contract
+from models.event import Event
 
 from datetime import datetime
 from decimal import Decimal
 
-engine = create_engine("sqlite:///epicevents.db", echo=True)
+engine = create_engine("sqlite:///database/test.db", echo=True)
 
 from sqlalchemy.orm import Session
 
@@ -15,6 +20,7 @@ with Session(engine) as session:
     email = "alice@epicenvents.com",
     role = UserRole.COMMERCIAL,
   )
+    user1.set_password("TopSecret123")
     session.add(user1)
 
     # Create a new client

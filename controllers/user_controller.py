@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
-from create_db import engine
-from models import User
-from validators import validate_name, validate_email, validate_password, validate_role
+from database.create_db import engine
+from models.user import User
+from validators.user_validators import validate_name, validate_email, validate_password, validate_role
 
 class UserController:
     def __init__(self, session: Session):

@@ -1,5 +1,5 @@
 import pytest
-from user_controller import UserController
+from controllers.user_controller import UserController
 from tests.conftest import session
 
 def test_create_valid_user(session,user_data):

@@ -16,3 +16,6 @@ poetry.lock
 # coverage
 .coverage
 htmlcov/
+
+# Pycharm
+.idea/

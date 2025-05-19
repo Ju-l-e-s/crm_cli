@@ -21,3 +21,5 @@ build-backend = "poetry.core.masonry.api"
 pytest = "^8.3.5"
 pytest-cov = "^6.1.1"
 
+[tool.poetry]
+packages = [{ include = "crm", from = "src" }]

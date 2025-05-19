@@ -1,5 +1,5 @@
 import re
-from models import UserRole
+from models.user_role import UserRole
 
 name_regex = re.compile(r"[A-Za-zÀ-ÿ \-']+")
 

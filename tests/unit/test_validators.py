@@ -1,5 +1,5 @@
 import pytest
-from validators import (
+from validators.user_validators import (
     validate_name,
     validate_email,
     validate_password,
