@@ -1,5 +1,6 @@
 import pytest
 from controllers.user_controller import UserController
+from exceptions import CrmInvalidValue
 from tests.conftest import session
 
 def test_create_valid_user(session,user_data):
@@ -19,7 +20,7 @@ def test_create_user_duplicate_email(session):
         role="support",
         password="ValidPass123"
     )
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(CrmInvalidValue) as excinfo:
         controller.create_user(
             fullname="RandomUser Two",
             email="duplicate@example.com",
@@ -35,12 +36,12 @@ def test_authenticate_success(session, seeded_user):
 
 def test_authenticate_wrong_password(session, seeded_user):
     controller = UserController(session)
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(CrmInvalidValue) as excinfo:
         controller.authenticate("test@email.com", "WrongPassword123")
     assert "Wrong password" in str(excinfo.value)
 
 def test_authenticate_user_not_found(session):
     controller = UserController(session)
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(CrmInvalidValue) as excinfo:
         controller.authenticate("unknown@email.com", "AnyPass123")
     assert "User not found" in str(excinfo.value)

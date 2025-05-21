@@ -19,3 +19,6 @@ htmlcov/
 
 # Pycharm
 .idea/
+
+#env
+.env

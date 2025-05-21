@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from database.create_db import engine
+from exceptions import CrmInvalidValue
 from models.user import User
 from validators.user_validators import validate_name, validate_email, validate_password, validate_role
 
@@ -33,7 +34,7 @@ class UserController:
             return user
         except Exception as e:
             self.session.rollback()
-            raise ValueError(f"Could not create user: {e}") from e
+            raise CrmInvalidValue(f"Could not create user: {e}") from e
     def authenticate(self, email: str, password: str) -> User:
         """
         Authenticates a user based on email and password.
@@ -41,14 +42,14 @@ class UserController:
         :param email: The email of the user to authenticate.
         :param password: The password of the user to authenticate.
         :return: The authenticated user.
-        :raises ValueError: If the user is not found or if the password is incorrect.
+        :raises CrmInvalidValue: If the user is not found or if the password is incorrect.
         """
         user = self.session.query(User).filter(User.email == email).first()
         if not user:
-            raise ValueError("User not found.")
+            raise CrmInvalidValue("User not found.")
 
         if not user.check_password(password):
-            raise ValueError("Wrong password.")
+            raise CrmInvalidValue("Wrong password.")
 
         return user
 

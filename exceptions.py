@@ -1,0 +1,2 @@
+class CrmInvalidValue(ValueError):
+    pass
