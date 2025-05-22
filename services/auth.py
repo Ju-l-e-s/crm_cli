@@ -7,6 +7,8 @@ from models.user import User
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 
+from repositories.user_repository import UserRepository
+
 load_dotenv()
 
 JWT_SECRET = os.getenv("JWT_SECRET")
@@ -59,4 +61,4 @@ def get_user_from_token(token: str, session: Session) -> User | None:
     if not user_id:
         return None
 
-    return session.query(User).filter_by(id=user_id).first()
+    return UserRepository(session).get_by_id(user_id)
