@@ -4,6 +4,8 @@ from exceptions import CrmInvalidValue
 from models.user import User
 from repositories.user_repository import UserRepository
 from validators.user_validators import validate_name, validate_email, validate_password, validate_role
+from services.auth import generate_token
+from services.token_cache import save_token
 
 class UserController:
     def __init__(self, session: Session):
@@ -49,4 +51,6 @@ class UserController:
         if not user.check_password(password):
             raise CrmInvalidValue("Wrong password.")
 
+        token = generate_token(user)
+        save_token(token)
         return user

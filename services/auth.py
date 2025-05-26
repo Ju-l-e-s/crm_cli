@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 
 from repositories.user_repository import UserRepository
+from services.token_cache import delete_token
 
 load_dotenv()
 
@@ -41,8 +42,10 @@ def decode_token(token: str) -> dict:
         payload = decode(token, JWT_SECRET, algorithms=["HS256"])
         return payload
     except ExpiredSignatureError:
+        delete_token()
         raise CrmInvalidValue("Token expired.")
     except InvalidTokenError:
+        delete_token()
         raise CrmInvalidValue("Invalid token.")
 
 def get_user_from_token(token: str, session: Session) -> User | None:

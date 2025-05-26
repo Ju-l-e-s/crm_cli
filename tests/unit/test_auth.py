@@ -25,15 +25,32 @@ def test_get_user_from_token_invalid(session):
         get_user_from_token("invalid.token", session)
     assert "Invalid token." in str(excinfo.value)
 
-def test_expired_token(session, seeded_user):
-    from services.auth import JWT_SECRET
+def test_expired_token(session, seeded_user,monkeypatch):
+    monkeypatch.setattr("services.auth.JWT_SECRET", "test-secret")
     expired_payload = {
         "id": seeded_user.id,
         "role": seeded_user.role.value,
         "exp": datetime.now(timezone.utc) - timedelta(seconds=1)
     }
-    expired_token = jwt.encode(expired_payload, JWT_SECRET, algorithm="HS256")
+    expired_token = jwt.encode(expired_payload, "test-secret", algorithm="HS256")
 
     with pytest.raises(CrmInvalidValue) as excinfo:
         get_user_from_token(expired_token, session)
     assert "Token expired." in str(excinfo.value)
+
+def test_expired_token_deletes_cache(session, seeded_user, tmp_path, monkeypatch):
+    token_file = tmp_path / "token.jwt"
+    monkeypatch.setattr("services.token_cache.TOKEN_PATH", token_file)
+    monkeypatch.setattr("services.auth.JWT_SECRET", "test-secret")
+
+    expired_payload = {
+        "id": seeded_user.id,
+        "role": seeded_user.role.value,
+        "exp": datetime.now(timezone.utc) - timedelta(days=1)
+    }
+    token_file.write_text(jwt.encode(expired_payload, "test-secret", algorithm="HS256"))
+
+    with pytest.raises(CrmInvalidValue, match="Token expired."):
+        get_user_from_token(token_file.read_text(), session)
+
+    assert not token_file.exists()
