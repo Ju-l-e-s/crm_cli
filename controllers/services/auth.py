@@ -7,8 +7,8 @@ from models.user import User
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 
-from repositories.user_repository import UserRepository
-from services.token_cache import delete_token
+from controllers.repositories.user_repository import UserRepository
+from controllers.services.token_cache import delete_token
 
 load_dotenv()
 

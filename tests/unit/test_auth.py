@@ -1,7 +1,7 @@
 import pytest
 
 from exceptions import CrmInvalidValue
-from services.auth import generate_token, decode_token, get_user_from_token
+from controllers.services.auth import generate_token, decode_token, get_user_from_token
 import jwt
 from datetime import datetime, timedelta, timezone
 
@@ -26,7 +26,7 @@ def test_get_user_from_token_invalid(session):
     assert "Invalid token." in str(excinfo.value)
 
 def test_expired_token(session, seeded_user,monkeypatch):
-    monkeypatch.setattr("services.auth.JWT_SECRET", "test-secret")
+    monkeypatch.setattr("controllers.services.auth.JWT_SECRET", "test-secret")
     expired_payload = {
         "id": seeded_user.id,
         "role": seeded_user.role.value,
@@ -40,8 +40,8 @@ def test_expired_token(session, seeded_user,monkeypatch):
 
 def test_expired_token_deletes_cache(session, seeded_user, tmp_path, monkeypatch):
     token_file = tmp_path / "token.jwt"
-    monkeypatch.setattr("services.token_cache.TOKEN_PATH", token_file)
-    monkeypatch.setattr("services.auth.JWT_SECRET", "test-secret")
+    monkeypatch.setattr("controllers.services.token_cache.TOKEN_PATH", token_file)
+    monkeypatch.setattr("controllers.services.auth.JWT_SECRET", "test-secret")
 
     expired_payload = {
         "id": seeded_user.id,

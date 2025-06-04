@@ -1,5 +1,4 @@
-from models.user import User
-from repositories.user_repository import UserRepository
+from controllers.repositories.user_repository import UserRepository
 
 def test_user_repository_get_by_email(session, seeded_user):
     user_repository = UserRepository(session)

@@ -1,7 +1,7 @@
 import pytest
 
 from exceptions import CrmInvalidValue
-from validators.user_validators import (
+from controllers.validators.user_validators import (
     validate_name,
     validate_email,
     validate_password,

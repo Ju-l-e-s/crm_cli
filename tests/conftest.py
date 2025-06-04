@@ -2,8 +2,14 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from models.base import Base
+
+
 from models.user import User
 from models.user_role import UserRole
+from models.client import Client
+from models.contract import Contract
+from models.event import Event
+
 
 @pytest.fixture
 def session():

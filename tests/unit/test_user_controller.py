@@ -45,3 +45,39 @@ def test_authenticate_user_not_found(session):
     with pytest.raises(CrmInvalidValue) as excinfo:
         controller.authenticate("unknown@email.com", "AnyPass123")
     assert "User not found" in str(excinfo.value)
+
+def test_list_all_users(session, seeded_user):
+    controller = UserController(session)
+
+    users = controller.list_all_users()
+
+    assert isinstance(users, list)
+    assert any(user.id == seeded_user.id for user in users)
+
+
+def test_update_user_success(session, seeded_user):
+    controller = UserController(session)
+
+    updated = controller.update_user(
+        user_id=seeded_user.id,
+        fullname="Updated Name",
+        email="updated@email.com",
+        role="support"
+    )
+
+    assert updated.id == seeded_user.id
+    assert updated.fullname == "Updated Name"
+    assert updated.email == "updated@email.com"
+    assert updated.role.value == "support"
+
+
+def test_update_user_not_found(session):
+    controller = UserController(session)
+
+    with pytest.raises(CrmInvalidValue, match="User not found"):
+        controller.update_user(
+            user_id=999,
+            fullname="Any Name",
+            email="email@nowhere.com",
+            role="gestion"
+        )
