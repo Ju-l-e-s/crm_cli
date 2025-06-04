@@ -32,9 +32,9 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-
-    events_support: Mapped[List["Event"]] = relationship(back_populates="support_contact", cascade="all, delete-orphan")
+    events_support: Mapped[List["Event"]] = relationship(back_populates="support_contact")
     clients: Mapped[List["Client"]] = relationship(back_populates="commercial")
+    contracts: Mapped[List["Contract"]] = relationship(back_populates="commercial")
 
     def __repr__(self) -> str:
         return f"User(id={self.id}, fullname={self.fullname!r}, email={self.email!r}, role={self.role})"

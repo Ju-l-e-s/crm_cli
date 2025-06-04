@@ -35,10 +35,11 @@ class Contract(Base):
 
     # FK
     client_id:        Mapped[int]      = mapped_column(ForeignKey("client.id"), nullable=False)
+    commercial_id:    Mapped[int]      = mapped_column(ForeignKey("user_account.id"), nullable=False)
 
     # Relations
     client:           Mapped["Client"]      = relationship(back_populates="contracts")
     events:           Mapped[List["Event"]] = relationship(back_populates="contract",cascade="all, delete-orphan")
-
+    commercial:       Mapped["User"]        = relationship(back_populates = "contracts")
     def __repr__(self) -> str:
         return f"Contract(id={self.id}, total={self.total_amount!r}, remaining={self.remaining_amount}, creation={self.creation_date}, end={self.end_date}, signed={self.is_signed})"
