@@ -28,11 +28,34 @@ def user_data():
     }
 
 @pytest.fixture
+def client_data(seeded_user_commercial):
+    return {
+        "fullname": "Kevin Casey",
+        "email": "kevin@startup.io",
+        "phone": "+678 123 456 78",
+        "company_name": "Cool Startup LLC",
+        "commercial_id": seeded_user_commercial.id
+    }
+
+@pytest.fixture
 def seeded_user(session):
     user = User(
         fullname="Test User",
         email="test@email.com",
         role=UserRole.GESTION
+    )
+    user.set_password("CorrectPassword123")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+@pytest.fixture
+def seeded_user_commercial(session):
+    user = User(
+        fullname="Test User",
+        email="test2@email.com",
+        role=UserRole.COMMERCIAL
     )
     user.set_password("CorrectPassword123")
     session.add(user)

@@ -29,8 +29,8 @@ class Client(Base):
     id:         Mapped[int] = mapped_column(primary_key=True)
     fullname:   Mapped[str] = mapped_column(String(70), nullable=False)
     email:      Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
-    phone:      Mapped[str] = mapped_column(String(20))
-    company:    Mapped[str] = mapped_column(String(120))
+    phone:      Mapped[str] = mapped_column(String(20),nullable=True)
+    company:    Mapped[str] = mapped_column(String(120),nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False)
