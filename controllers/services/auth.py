@@ -15,7 +15,6 @@ load_dotenv()
 JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_EXPIRES_IN = int(os.getenv("JWT_EXPIRES_IN", 3600*24))
 
-exp = datetime.now(timezone.utc) + timedelta(seconds=JWT_EXPIRES_IN)
 
 def generate_token(user: User) -> str:
     """
@@ -24,6 +23,7 @@ def generate_token(user: User) -> str:
     :param user: The user to generate a token for.
     :return: The generated token.
     """
+    exp = datetime.now(timezone.utc) + timedelta(seconds=JWT_EXPIRES_IN)
     payload = {
         "id": user.id,
         "role": user.role.value,
