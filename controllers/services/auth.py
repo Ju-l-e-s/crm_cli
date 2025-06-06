@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 
 from controllers.repositories.user_repository import UserRepository
-from controllers.services.token_cache import delete_token
+from controllers.services.token_cache import delete_token, load_token
 
 load_dotenv()
 
@@ -65,3 +65,12 @@ def get_user_from_token(token: str, session: Session) -> User | None:
         return None
 
     return UserRepository(session).get_by_id(user_id)
+
+def get_current_user(session: Session) -> User | None:
+    token = load_token()
+    if not token:
+        raise CrmInvalidValue("Authentication required")
+    payload = decode_token(token)
+    user_id = payload["id"]
+    user = UserRepository(session).get_by_id(user_id)
+    return user
