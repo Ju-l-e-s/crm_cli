@@ -1,7 +1,7 @@
 import pytest
 
 from exceptions import CrmInvalidValue
-from controllers.validators.user_validators import (
+from controllers.validators.validators import (
     validate_name,
     validate_email,
     validate_password,
@@ -38,5 +38,56 @@ def test_validate_role_invalid():
         validate_role("invalid")
 
 
+import pytest
+from controllers.validators.validators import validate_phone, validate_company
+from exceptions import CrmInvalidValue
+
+# phone
+
+@pytest.mark.parametrize("valid_phone", [
+    "+33612345678",
+    "+1 234 567 8901",
+    "0123456789",
+    "+33 6 12 34 56 78",
+    "+4917612345678",
+])
+def test_validate_phone_valid(valid_phone):
+    result = validate_phone(valid_phone)
+    assert isinstance(result, str)
+    assert result.startswith("+") or result.isdigit()
+
+@pytest.mark.parametrize("invalid_phone", [
+    "abc123",  # letters
+    "+33",     # too short
+    "+12345678901234567",  # too long
+    "",        # empty
+    "++33612345678",  # double +
+])
+def test_validate_phone_invalid(invalid_phone):
+    with pytest.raises(CrmInvalidValue):
+        validate_phone(invalid_phone)
+
+# company
+@pytest.mark.parametrize("valid_name", [
+    "Cool Startup LLC",
+    "Monstres & Co.",
+    "Entreprise-Test 42",
+    "SARL L'altitude",
+    "Compagnie Générale (France)",
+])
+def test_validate_company_name_valid(valid_name):
+    result = validate_company(valid_name)
+    assert isinstance(result, str)
+    assert result == valid_name.strip()
+
+@pytest.mark.parametrize("invalid_name", [
+    "",          # empty
+    "A",         # too short
+    "   ",       # just spaces
+    "😂 Company",  # emoji not allowed
+])
+def test_validate_company_name_invalid(invalid_name):
+    with pytest.raises(CrmInvalidValue):
+        validate_company(invalid_name)
 
 
