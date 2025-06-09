@@ -10,8 +10,7 @@ from controllers.services.authorization import (
 from exceptions import CrmInvalidValue
 from models.client import Client
 from controllers.repositories.client_repository import ClientRepository
-from controllers.validators.user_validators import validate_name, validate_email
-from controllers.validators.client_validators import validate_phone, validate_company
+from controllers.validators.validators import validate_name, validate_email, validate_phone, validate_company
 
 
 class ClientController:

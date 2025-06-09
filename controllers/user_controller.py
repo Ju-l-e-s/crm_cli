@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from exceptions import CrmInvalidValue
 from models.user import User
 from controllers.repositories.user_repository import UserRepository
-from controllers.validators.user_validators import validate_name, validate_email, validate_password, validate_role
+from controllers.validators.validators import validate_name, validate_email, validate_password, validate_role
 from controllers.services.auth import generate_token
 from controllers.services.token_cache import save_token
 from controllers.services.authorization import requires_role, requires_self_or_role
