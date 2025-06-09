@@ -67,6 +67,11 @@ def get_user_from_token(token: str, session: Session) -> User | None:
     return UserRepository(session).get_by_id(user_id)
 
 def get_current_user(session: Session) -> User | None:
+    """
+
+    Returns:
+        object: 
+    """
     token = load_token()
     if not token:
         raise CrmInvalidValue("Authentication required")
