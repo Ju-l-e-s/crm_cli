@@ -41,3 +41,21 @@ def validate_role(role: str) -> UserRole:
     if role not in role_list:
         raise CrmInvalidValue(f"Role must be one of: {', '.join(role_list)}")
     return UserRole(role)
+
+def validate_phone(phone: str) -> str:
+    phone = re.sub(r"[^\d+]", "", phone)  # remove all non-digit characters except "+"
+    if not re.fullmatch(r"^\+?\d{7,15}$", phone):
+        raise CrmInvalidValue("Invalid phone number format.")
+    return phone
+
+company_regex = re.compile(r"[A-Za-zÀ-ÿ0-9 &.,'\"°()\-]+")
+
+def validate_company(name: str) -> str:
+    name = name.strip()
+    if not name:
+        raise CrmInvalidValue("Company name cannot be empty.")
+    if len(name) < 2:
+        raise CrmInvalidValue("Company name is too short.")
+    if not re.fullmatch(company_regex, name):
+        raise CrmInvalidValue("Company name contains invalid characters.")
+    return name
