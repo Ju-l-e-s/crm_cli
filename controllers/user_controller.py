@@ -7,6 +7,7 @@ from controllers.repositories.user_repository import UserRepository
 from controllers.validators.user_validators import validate_name, validate_email, validate_password, validate_role
 from controllers.services.auth import generate_token
 from controllers.services.token_cache import save_token
+from controllers.services.authorization import requires_role, requires_self_or_role
 
 
 class UserController:
@@ -57,7 +58,7 @@ class UserController:
         save_token(token)
         return user
 
-    # @requires_role("gestion")
+    @requires_role("gestion")
     def list_all_users(self) -> list[Type[User]]:
         """
         Lists all users. Only 'gestion' can list all users.
@@ -74,7 +75,7 @@ class UserController:
             raise CrmInvalidValue("User not found.")
         return user
 
-    # @requires_self_or_role("gestion")
+    @requires_self_or_role("gestion")
     def update_user(self, user_id: int, fullname: str, email: str, role: str) -> User:
         """
         Updates a user's information. A user can update his own profile, or a 'gestion' can update any.
