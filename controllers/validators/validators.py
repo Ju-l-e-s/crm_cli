@@ -79,3 +79,36 @@ def validate_date(date_str: str) -> date:
     except ValueError:
         raise CrmInvalidValue("Date must be in format YYYY-MM-DD.")
     return dt
+
+def validate_event_name(name: str) -> str:
+    name = name.strip()
+    if not name:
+        raise CrmInvalidValue("Event name cannot be empty.")
+    if len(name) < 3:
+        raise CrmInvalidValue("Event name is too short.")
+    if not re.fullmatch(r"[A-Za-zÀ-ÿ0-9 \-']+", name):
+        raise CrmInvalidValue("Event name contains invalid characters.")
+    return name
+
+def validate_location(location: str) -> str:
+    location = location.strip()
+    if not location:
+        raise CrmInvalidValue("Location cannot be empty.")
+    if len(location) < 3:
+        raise CrmInvalidValue("Location is too short.")
+    return location
+
+def validate_attendees(attendees: int) -> int:
+    if not isinstance(attendees, int) or attendees < 1:
+        raise CrmInvalidValue("Number of attendees must be a positive integer.")
+    return attendees
+
+def validate_event_dates(start_date: str, end_date: str):
+    try:
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d %H:%M")
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d %H:%M")
+    except ValueError:
+        raise CrmInvalidValue("Invalid date format. Use YYYY-MM-DD HH:MM.")
+    if end_dt <= start_dt:
+        raise CrmInvalidValue("End date must be after start date.")
+    return start_dt, end_dt
