@@ -9,7 +9,11 @@ from controllers.validators.validators import (
     validate_password,
     validate_role,
     validate_amount,
-    validate_date
+    validate_date,
+    validate_event_name,
+    validate_location,
+    validate_attendees,
+    validate_event_dates
 )
 
 # name
@@ -116,3 +120,43 @@ def test_validate_date_valid(valid_date):
 def test_validate_date_invalid(invalid_date):
     with pytest.raises(CrmInvalidValue):
         validate_date(invalid_date)
+
+# event name
+def test_validate_event_name_ok():
+    assert validate_event_name("Conférence 2025") == "Conférence 2025"
+
+def test_validate_event_name_empty():
+    with pytest.raises(CrmInvalidValue):
+        validate_event_name("")
+
+def test_validate_event_name_invalid():
+    with pytest.raises(CrmInvalidValue):
+        validate_event_name("@bad!")
+
+def test_validate_location_ok():
+    assert validate_location("Paris Expo") == "Paris Expo"
+
+def test_validate_location_empty():
+    with pytest.raises(CrmInvalidValue):
+        validate_location("")
+
+def test_validate_attendees_ok():
+    assert validate_attendees(10) == 10
+
+def test_validate_attendees_invalid():
+    with pytest.raises(CrmInvalidValue):
+        validate_attendees(0)
+    with pytest.raises(CrmInvalidValue):
+        validate_attendees(-5)
+
+def test_validate_event_dates_ok():
+    start, end = validate_event_dates("2025-06-10 09:00", "2025-06-10 18:00")
+    assert start.hour == 9 and end.hour == 18
+
+def test_validate_event_dates_invalid_format():
+    with pytest.raises(CrmInvalidValue):
+        validate_event_dates("2025-06-10", "2025-06-10 18:00")
+
+def test_validate_event_dates_end_before_start():
+    with pytest.raises(CrmInvalidValue):
+        validate_event_dates("2025-06-10 18:00", "2025-06-10 09:00")
