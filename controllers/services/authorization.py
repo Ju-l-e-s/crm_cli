@@ -1,6 +1,9 @@
 from functools import wraps
 
+from sqlalchemy.orm import InstrumentedAttribute
+
 from controllers.repositories.client_repository import ClientRepository
+from controllers.repositories.contract_repository import ContractRepository
 from controllers.services.auth import decode_token
 from controllers.services.token_cache import load_token
 from exceptions import CrmInvalidValue
@@ -26,6 +29,15 @@ def get_client_owner_id(session, **kwargs):
     if not client:
         raise CrmInvalidValue("Client not found.")
     return client.commercial_id
+
+def get_contract_owner_id(session, contract_id: int) -> InstrumentedAttribute[int] | None:
+    """
+    Récupère l'ID du commercial propriétaire d'un contrat donné.
+    """
+    contract = ContractRepository(session).get_by_id(contract_id)
+    if not contract:
+        raise CrmInvalidValue("Contract not found.")
+    return contract.commercial_id
 
 # --- Permission decorators ---
 
