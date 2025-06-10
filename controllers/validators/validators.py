@@ -1,7 +1,8 @@
 import re
-
 from exceptions import CrmInvalidValue
 from models.user_role import UserRole
+from decimal import Decimal, InvalidOperation
+from datetime import datetime, date
 
 name_regex = re.compile(r"[A-Za-zÀ-ÿ \-']+")
 
@@ -59,3 +60,22 @@ def validate_company(name: str) -> str:
     if not re.fullmatch(company_regex, name):
         raise CrmInvalidValue("Company name contains invalid characters.")
     return name
+
+# Amount validator using Decimal
+def validate_amount(amount) -> Decimal:
+    try:
+        dec = Decimal(str(amount))
+    except (InvalidOperation, ValueError):
+        raise CrmInvalidValue("Amount must be a valid decimal.")
+    if dec <= 0:
+        raise CrmInvalidValue("Amount must be greater than zero.")
+    return dec
+
+# Date validator
+def validate_date(date_str: str) -> date:
+    date_str = date_str.strip()
+    try:
+        dt = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        raise CrmInvalidValue("Date must be in format YYYY-MM-DD.")
+    return dt
