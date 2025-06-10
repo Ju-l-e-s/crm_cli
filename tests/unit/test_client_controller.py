@@ -53,8 +53,9 @@ def test_list_all_clients(session):
 def test_list_by_commercial_success(session, seeded_user_commercial):
     controller = ClientController(session)
     fake_list = [MagicMock()]
+
     with patch('controllers.services.authorization.get_token_payload_or_raise', return_value={'role': 'commercial', 'id': seeded_user_commercial.id}), \
-         patch('controllers.services.auth.get_current_user', return_value=seeded_user_commercial), \
+         patch('controllers.client_controller.get_current_user', return_value=seeded_user_commercial), \
          patch('controllers.client_controller.ClientRepository.list_by_commercial', return_value=fake_list) as mock_list:
         result = controller.list_by_commercial()
         assert result == fake_list
