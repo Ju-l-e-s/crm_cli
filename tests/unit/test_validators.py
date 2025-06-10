@@ -1,11 +1,15 @@
 import pytest
 
 from exceptions import CrmInvalidValue
+from datetime import date
+from decimal import Decimal
 from controllers.validators.validators import (
     validate_name,
     validate_email,
     validate_password,
-    validate_role
+    validate_role,
+    validate_amount,
+    validate_date
 )
 
 # name
@@ -90,4 +94,25 @@ def test_validate_company_name_invalid(invalid_name):
     with pytest.raises(CrmInvalidValue):
         validate_company(invalid_name)
 
+#amount
+@pytest.mark.parametrize("valid_amount", ["10",  "0.01", Decimal("99.99")])
+def test_validate_amount_valid(valid_amount):
+    dec = validate_amount(valid_amount)
+    assert isinstance(dec, Decimal)
+    assert dec > 0
 
+@pytest.mark.parametrize("invalid_amount", ["abc", "-5", 0, -1])
+def test_validate_amount_invalid(invalid_amount):
+    with pytest.raises(CrmInvalidValue):
+        validate_amount(invalid_amount)
+
+# date
+@pytest.mark.parametrize("valid_date", ["2025-06-09", "2000-01-01"])
+def test_validate_date_valid(valid_date):
+    d = validate_date(valid_date)
+    assert isinstance(d, date)
+
+@pytest.mark.parametrize("invalid_date", ["", "09-06-2025", "2025/06/09", "2025-13-01"])
+def test_validate_date_invalid(invalid_date):
+    with pytest.raises(CrmInvalidValue):
+        validate_date(invalid_date)
