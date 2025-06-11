@@ -4,6 +4,7 @@ from sqlalchemy.orm import InstrumentedAttribute
 
 from controllers.repositories.client_repository import ClientRepository
 from controllers.repositories.contract_repository import ContractRepository
+from exceptions import CrmAuthenticationError, CrmNotFoundError
 from controllers.repositories.event_repository import EventRepository
 from controllers.services.auth import decode_token
 from controllers.services.token_cache import load_token
@@ -19,7 +20,7 @@ def get_token_payload_or_raise() -> dict:
     """
     token = load_token()
     if not token:
-        raise CrmInvalidValue("Authentication required")
+        raise CrmAuthenticationError()
     return decode_token(token)
 
 def get_client_owner_id(session, **kwargs):
@@ -29,7 +30,7 @@ def get_client_owner_id(session, **kwargs):
     """
     client = ClientRepository(session).get_by_id(kwargs["client_id"])
     if not client:
-        raise CrmInvalidValue("Client not found.")
+        raise CrmNotFoundError("Client")
     return client.commercial_id
 
 def get_contract_owner_id(session, contract_id: int) -> InstrumentedAttribute[int] | None:
@@ -39,7 +40,7 @@ def get_contract_owner_id(session, contract_id: int) -> InstrumentedAttribute[in
     """
     contract = ContractRepository(session).get_by_id(contract_id)
     if not contract:
-        raise CrmInvalidValue("Contract not found.")
+        raise CrmNotFoundError("Contract")
     return contract.commercial_id
 
 def get_event_owner_id(session, event_id: int):
@@ -49,11 +50,11 @@ def get_event_owner_id(session, event_id: int):
     """
     event = EventRepository(session).get_by_id(event_id)
     if not event:
-        raise CrmInvalidValue("Event not found.")
+        raise CrmNotFoundError("Event")
     # Retrieve the commercial via the contract linked to the event
     contract = ContractRepository(session).get_by_id(event.contract_id)
     if not contract:
-        raise CrmInvalidValue("Associated contract not found.")
+        raise CrmNotFoundError("Associated contract")
     return contract.commercial_id
 
 # --- Permission decorators ---

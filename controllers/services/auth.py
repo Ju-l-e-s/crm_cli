@@ -1,8 +1,7 @@
 from sqlalchemy.orm import Session
 import os
 from jwt import encode, decode, ExpiredSignatureError, InvalidTokenError
-
-from exceptions import CrmInvalidValue
+from exceptions import CrmInvalidValue, CrmAuthenticationError
 from models.user import User
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
@@ -43,10 +42,10 @@ def decode_token(token: str) -> dict:
         return payload
     except ExpiredSignatureError:
         delete_token()
-        raise CrmInvalidValue("Token expired.")
+        raise CrmAuthenticationError("Token expired.")
     except InvalidTokenError:
         delete_token()
-        raise CrmInvalidValue("Invalid token.")
+        raise CrmAuthenticationError("Invalid token.")
 
 def get_user_from_token(token: str, session: Session) -> User | None:
     """
@@ -74,7 +73,7 @@ def get_current_user(session: Session) -> User | None:
     """
     token = load_token()
     if not token:
-        raise CrmInvalidValue("Authentication required")
+        raise CrmAuthenticationError()
     payload = decode_token(token)
     user_id = payload["id"]
     user = UserRepository(session).get_by_id(user_id)

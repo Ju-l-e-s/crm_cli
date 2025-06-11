@@ -4,7 +4,7 @@ from datetime import datetime
 
 from controllers.services.auth import get_current_user
 from controllers.services.authorization import requires_role, requires_ownership_or_role, get_contract_owner_id
-from exceptions import CrmInvalidValue
+from exceptions import CrmInvalidValue, CrmNotFoundError, CrmIntegrityError
 from models.event import Event
 from models.contract import Contract
 from controllers.repositories.event_repository import EventRepository
@@ -38,7 +38,7 @@ class EventController:
         contract_repo = ContractRepository(self.session)
         contract = contract_repo.get_by_id(contract_id)
         if not contract:
-            raise CrmInvalidValue("Contract not found.")
+            raise CrmNotFoundError("Contract")
 
         if not contract.is_signed:
             raise CrmInvalidValue("Cannot create event for unsigned contract.")
@@ -66,7 +66,7 @@ class EventController:
         try:
             return EventRepository(self.session).save(event)
         except Exception as e:
-            raise CrmInvalidValue(f"Could not create event: {e}") from e
+            raise CrmIntegrityError(f"Could not create event: {e}") from e
 
     def list_all_events(self) -> List[Type[Event]]:
         """
@@ -96,7 +96,7 @@ class EventController:
         """
         event = EventRepository(self.session).get_by_id(event_id)
         if not event:
-            raise CrmInvalidValue("Event not found.")
+            raise CrmNotFoundError("Event")
         return event
 
     def get_contract_events(self, contract_id: int) -> List[Event]:
@@ -117,14 +117,14 @@ class EventController:
         repo = EventRepository(self.session)
         event = repo.get_by_id(event_id)
         if not event:
-            raise CrmInvalidValue("Event not found.")
+            raise CrmNotFoundError("Event")
 
         # Validate that the support contact exists and has support role
         from controllers.repositories.user_repository import UserRepository
         user_repo = UserRepository(self.session)
         support_user = user_repo.get_by_id(support_contact_id)
         if not support_user:
-            raise CrmInvalidValue("Support user not found.")
+            raise CrmNotFoundError("Support user")
         if support_user.role.value != "support":
             raise CrmInvalidValue("User must have support role.")
 
@@ -133,7 +133,7 @@ class EventController:
         try:
             return repo.save(event)
         except Exception as e:
-            raise CrmInvalidValue(f"Could not assign support to event: {e}") from e
+            raise CrmIntegrityError(f"Could not assign support to event: {e}") from e
 
     def update_event(self, event_id: int, name: str = None, start_date: str = None,
                      end_date: str = None, location: str = None, attendees: int = None,
@@ -155,7 +155,7 @@ class EventController:
         repo = EventRepository(self.session)
         event = repo.get_by_id(event_id)
         if not event:
-            raise CrmInvalidValue("Event not found.")
+            raise CrmNotFoundError("Event")
 
 
 
@@ -178,4 +178,4 @@ class EventController:
         try:
             return repo.save(event)
         except Exception as e:
-            raise CrmInvalidValue(f"Could not update event: {e}") from e
+            raise CrmIntegrityError(f"Could not update event: {e}") from e

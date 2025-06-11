@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from controllers.services.auth import get_current_user
 from controllers.services.authorization import requires_role, requires_ownership_or_role, get_contract_owner_id
-from exceptions import CrmInvalidValue
+from exceptions import CrmInvalidValue, CrmNotFoundError, CrmIntegrityError
 from models.contract import Contract
 from controllers.repositories.contract_repository import ContractRepository
 from controllers.validators.validators import validate_amount, validate_date
@@ -45,7 +45,7 @@ class ContractController:
         try:
             return ContractRepository(self.session).save(contract)
         except Exception as e:
-            raise CrmInvalidValue(f"Could not create contract: {e}") from e
+            raise CrmIntegrityError(f"Could not create contract: {e}") from e
 
     def list_all_contracts(self) -> List[Type[Contract]]:
         """
@@ -68,7 +68,7 @@ class ContractController:
         """
         contract = ContractRepository(self.session).get_by_id(contract_id)
         if not contract:
-            raise CrmInvalidValue("Contract not found.")
+            raise CrmNotFoundError("Contract")
         return contract
 
     @requires_ownership_or_role(get_contract_owner_id, 'gestion')
@@ -86,7 +86,7 @@ class ContractController:
         repo = ContractRepository(self.session)
         contract = repo.get_by_id(contract_id)
         if not contract:
-            raise CrmInvalidValue("Contract not found.")
+            raise CrmNotFoundError("Contract")
 
         # Validate and assign values
         if amount is not None:
@@ -101,4 +101,4 @@ class ContractController:
         try:
             return repo.save(contract)
         except Exception as e:
-            raise CrmInvalidValue(f"Could not update contract: {e}") from e
+            raise CrmIntegrityError(f"Could not update contract: {e}") from e

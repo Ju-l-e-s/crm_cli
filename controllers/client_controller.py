@@ -10,6 +10,7 @@ from controllers.services.authorization import (
 from exceptions import CrmInvalidValue
 from models.client import Client
 from controllers.repositories.client_repository import ClientRepository
+from exceptions import CrmNotFoundError, CrmIntegrityError
 from controllers.validators.validators import validate_name, validate_email, validate_phone, validate_company
 
 
@@ -39,7 +40,7 @@ class ClientController:
         try:
             return ClientRepository(self.session).save(client)
         except Exception as e:
-            raise CrmInvalidValue(f"Could not create client: {e}") from e
+            raise CrmIntegrityError(f"Could not create client: {e}") from e
 
 
     def list_all_clients(self) -> list[Type[Client]]:
@@ -64,7 +65,7 @@ class ClientController:
         """
         client = ClientRepository(self.session).get_by_id(client_id)
         if not client:
-            raise CrmInvalidValue("User not found.")
+            raise CrmNotFoundError("User")
         return client
 
     @requires_ownership_or_role(get_client_owner_id,'gestion')
@@ -74,7 +75,7 @@ class ClientController:
         """
         client = ClientRepository(self.session).get_by_id(client_id)
         if not client:
-            raise CrmInvalidValue("User not found.")
+            raise CrmNotFoundError("User")
 
         fullname = validate_name(fullname)
         email = validate_email(email)
@@ -90,4 +91,4 @@ class ClientController:
         try:
             return ClientRepository(self.session).save(client)
         except Exception as e:
-            raise CrmInvalidValue(f"Could not update client: {e}") from e
+            raise CrmIntegrityError(f"Could not update client: {e}") from e

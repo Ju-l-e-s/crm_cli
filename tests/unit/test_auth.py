@@ -1,4 +1,5 @@
 import pytest
+from exceptions import CrmAuthenticationError, CrmNotFoundError, CrmIntegrityError
 
 from exceptions import CrmInvalidValue
 from controllers.services.auth import generate_token, decode_token, get_user_from_token, get_current_user
@@ -21,7 +22,7 @@ def test_get_user_from_token_valid(session, seeded_user):
     assert found_user.id == seeded_user.id
 
 def test_get_user_from_token_invalid(session):
-    with pytest.raises(CrmInvalidValue) as excinfo:
+    with pytest.raises(CrmAuthenticationError) as excinfo:
         get_user_from_token("invalid.token", session)
     assert "Invalid token." in str(excinfo.value)
 
@@ -34,7 +35,7 @@ def test_expired_token(session, seeded_user,monkeypatch):
     }
     expired_token = jwt.encode(expired_payload, "test-secret", algorithm="HS256")
 
-    with pytest.raises(CrmInvalidValue) as excinfo:
+    with pytest.raises(CrmAuthenticationError) as excinfo:
         get_user_from_token(expired_token, session)
     assert "Token expired." in str(excinfo.value)
 
@@ -50,7 +51,7 @@ def test_expired_token_deletes_cache(session, seeded_user, tmp_path, monkeypatch
     }
     token_file.write_text(jwt.encode(expired_payload, "test-secret", algorithm="HS256"))
 
-    with pytest.raises(CrmInvalidValue, match="Token expired."):
+    with pytest.raises(CrmAuthenticationError, match="Token expired."):
         get_user_from_token(token_file.read_text(), session)
 
     assert not token_file.exists()
@@ -67,10 +68,10 @@ def test_get_current_user_valid(session,seeded_user,monkeypatch):
 
 def test_get_current_user_invalid(session,seeded_user,monkeypatch):
     monkeypatch.setattr("controllers.services.auth.load_token", lambda: "some.invalid.token")
-    def fake_decode(token): raise CrmInvalidValue("Invalid token.")
+    def fake_decode(token): raise CrmAuthenticationError("Invalid token.")
     monkeypatch.setattr("controllers.services.auth.decode_token", fake_decode)
 
-    with pytest.raises(CrmInvalidValue, match="Invalid token."):
+    with pytest.raises(CrmAuthenticationError, match="Invalid token."):
         get_current_user(session)
 
 def test_get_current_user_expired(session,seeded_user,monkeypatch):
@@ -78,8 +79,8 @@ def test_get_current_user_expired(session,seeded_user,monkeypatch):
     monkeypatch.setattr("controllers.services.auth.load_token", lambda: "test-token")
 
     def fake_decode_token(token):
-        raise CrmInvalidValue("Token expired.")
+        raise CrmAuthenticationError("Token expired.")
 
     monkeypatch.setattr("controllers.services.auth.decode_token", fake_decode_token)
-    with pytest.raises(CrmInvalidValue, match="Token expired."):
+    with pytest.raises(CrmAuthenticationError, match="Token expired."):
         get_current_user(session)

@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from exceptions import CrmAuthenticationError, CrmNotFoundError
 from exceptions import CrmForbiddenAccessError, CrmInvalidValue
 from controllers.services.authorization import requires_role, requires_self_or_role, get_event_owner_id
 
@@ -28,7 +29,7 @@ def test_requires_role_invalid(monkeypatch):
 def test_requires_role_missing_token(monkeypatch):
     monkeypatch.setattr("controllers.services.authorization.load_token", lambda: None)
 
-    with pytest.raises(CrmInvalidValue, match="Authentication required"):
+    with pytest.raises(CrmAuthenticationError, match="Authentication required"):
         wrapped_func()
 
 @requires_self_or_role("gestion")
@@ -61,7 +62,7 @@ def test_requires_self_or_role_forbidden(monkeypatch):
 def test_requires_self_or_role_no_token(monkeypatch):
     monkeypatch.setattr("controllers.services.authorization.load_token", lambda: None)
 
-    with pytest.raises(CrmInvalidValue, match="Authentication required"):
+    with pytest.raises(CrmAuthenticationError, match="Authentication required"):
         wrapped_func2(user_id=123)
 
 
@@ -100,7 +101,7 @@ def test_get_event_owner_id_event_not_found(monkeypatch):
         lambda self, eid: None
     )
 
-    with pytest.raises(CrmInvalidValue, match="Event not found."):
+    with pytest.raises(CrmNotFoundError, match="Event not found."):
         get_event_owner_id(session, 1)
 
 
@@ -121,5 +122,5 @@ def test_get_event_owner_id_contract_not_found(monkeypatch):
         lambda self, cid: None
     )
 
-    with pytest.raises(CrmInvalidValue, match="Associated contract not found."):
+    with pytest.raises(CrmNotFoundError, match="Associated contract not found."):
         get_event_owner_id(session, 1)
