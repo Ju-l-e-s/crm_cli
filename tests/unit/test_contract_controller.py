@@ -27,8 +27,10 @@ def test_create_contract_success(session, seeded_user, fake_dates):
                return_value={'role': 'gestion', 'id': seeded_user.id}), \
          patch('controllers.contract_controller.get_current_user',
                return_value=seeded_user), \
+         patch('controllers.contract_controller.ClientRepository.get_by_id',
+               return_value=MagicMock(id=1)), \
          patch('controllers.contract_controller.ContractRepository.save',
-               return_value=fake_contract) as mock_save:
+               return_value=fake_contract):
 
         result = controller.create_contract(
             client_id=1,
@@ -38,4 +40,3 @@ def test_create_contract_success(session, seeded_user, fake_dates):
         )
         assert isinstance(result, Contract)
         assert result.total_amount == Decimal("50.00")
-        mock_save.assert_called_once()

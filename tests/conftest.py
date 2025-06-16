@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from models.base import Base
+from unittest.mock import MagicMock
 
 
 from models.user import User
@@ -62,3 +63,12 @@ def seeded_user_commercial(session):
     session.commit()
     session.refresh(user)
     return user
+
+
+def _make_console():
+    """Return a MagicMock console with input, print and clear methods."""
+    console = MagicMock()
+    console.input = MagicMock()
+    console.print = MagicMock()
+    console.clear = MagicMock()
+    return console

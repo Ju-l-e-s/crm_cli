@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from controllers.services.auth import get_current_user
-from controllers.services.authorization import requires_role, requires_ownership_or_role, get_contract_owner_id
+from controllers.services.authorization import requires_role, requires_ownership_or_role, get_event_owner_id
 from exceptions import CrmInvalidValue, CrmNotFoundError, CrmIntegrityError
 from models.event import Event
 from models.contract import Contract
@@ -135,6 +135,7 @@ class EventController:
         except Exception as e:
             raise CrmIntegrityError(f"Could not assign support to event: {e}") from e
 
+    @requires_ownership_or_role(get_event_owner_id, "gestion")
     def update_event(self, event_id: int, name: str = None, start_date: str = None,
                      end_date: str = None, location: str = None, attendees: int = None,
                      notes: str = None) -> Event:
@@ -157,6 +158,8 @@ class EventController:
         if not event:
             raise CrmNotFoundError("Event")
 
+        if self.controller.get_event_by_id(event_id).support_contact_id != user.id and user.role.value != "gestion":
+            raise CrmInvalidValue("You can only update events assigned to you.")
 
 
         # Validate and assign values

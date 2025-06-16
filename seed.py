@@ -1,60 +1,97 @@
-from sqlalchemy import create_engine
-
-from models.user import User
-from models.user_role import UserRole
-from models.client import Client
-from models.contract import Contract
-from models.event import Event
-
+import os
+import sys
 from datetime import datetime
 from decimal import Decimal
 
-engine = create_engine("sqlite:///database/test.db", echo=True)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy.orm import Session
+from database.session import SessionLocal, engine
+from models.base import Base
+from models.user import User
+from models.client import Client
+from models.contract import Contract
+from models.event import Event
+from models.user_role import UserRole
 
-with Session(engine) as session:
-    # Create a new user
-    user1 = User(
-    fullname = "Alice O'paysdesmerveilles",
-    email = "alice@epicenvents.com",
-    role = UserRole.COMMERCIAL,
-  )
-    user1.set_password("TopSecret123")
-    session.add(user1)
+def seed_data():
+    # Recreate the database for a clean state
+    print("Delete and recreate the database...")
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
 
-    # Create a new client
-    client1 = Client(
-        fullname = "Kevin Casey",
-        email = "kevin@startup.io",
-        phone = "+67812345678",
-        company = "Cool Startup LLC",
-        commercial = user1
-    )
-    session.add(client1)
+    session = SessionLocal()
 
-    # Create a new contract
-    contract1 = Contract(
-        total_amount=Decimal("1000"),
-        remaining_amount=Decimal("250"),
-        end_date = datetime(2025,12,31),
-        is_signed = True,
-        client = client1
-    )
-    session.add(contract1)
+    try:
+        print("Insertion des données de test...")
+        # Create users
+        user1 = User(
+            fullname="Lisa Simpson",
+            email="lisa@test.com",
+            role=UserRole.COMMERCIAL,
+        )
+        user1.set_password("Azertyuiop123")
 
-    # Create a new event
-    event1 = Event(
-        name = "John Ouick Wedding",
-        start_date = datetime(2025,6,4,13,15),
-        end_date = datetime(2025,6,5,2),
-        location = "53 Rue du Château, Candé-sur-Beuvron",
-        attendees = 75,
-        notes = "Wedding starts at 3PM, by the river.Catering is organized, reception starts at 5PM. Kate needs to organize the DJ for after party.",
-        contract = contract1,
-    )
-    session.add(event1)
+        user2 = User(
+            fullname="Homer Simpson",
+            email="homer@test.com",
+            role=UserRole.GESTION,
+        )
+        user2.set_password("Azertyuiop123")
 
-    # Commit
-    session.commit()
-    print ("Data inserted successfully!")
+        user3 = User(
+            fullname="Bart Simpson",
+            email="bart@test.com",
+            role=UserRole.SUPPORT,
+        )
+        user3.set_password("Azertyuiop123")
+
+        session.add_all([user1, user2, user3])
+        session.flush() # Get user IDs
+
+        # Create client
+        client1 = Client(
+            fullname="Maggie Simpson",
+            email="maggie@startup.io",
+            phone="+67812345678",
+            company="Cool Startup LLC",
+            commercial_id=user1.id,
+        )
+        session.add(client1)
+        session.flush() # Get client ID
+
+        # Create contract
+        contract1 = Contract(
+            total_amount=Decimal("1000"),
+            remaining_amount=Decimal("250"),
+            end_date=datetime(2025, 12, 31),
+            is_signed=True,
+            client_id=client1.id,
+            commercial_id=user1.id,
+        )
+        session.add(contract1)
+        session.flush() # Pour obtenir l'ID du contrat
+
+        # Create event
+        event1 = Event(
+            name="John Ouick Wedding",
+            start_date=datetime(2025, 6, 4, 13, 15),
+            end_date=datetime(2025, 6, 5, 2),
+            location="742 Evergreen Terrace, Springfield",
+            attendees=75,
+            notes="Wedding starts at 3PM, by the river.Catering is organized, reception starts at 5PM. Bart needs to organize the DJ for after party.",
+            contract_id=contract1.id,
+            support_contact_id=user3.id,
+        )
+        session.add(event1)
+
+        session.commit()
+        print("Test data inserted successfully.")
+
+    except Exception as e:
+        print(f"An error occurred during seeding: {e}")
+        session.rollback()
+    finally:
+        session.close()
+
+if __name__ == "__main__":
+    seed_data()

@@ -7,7 +7,9 @@ from controllers.services.authorization import requires_role, requires_ownership
 from exceptions import CrmInvalidValue, CrmNotFoundError, CrmIntegrityError
 from models.contract import Contract
 from controllers.repositories.contract_repository import ContractRepository
+from controllers.repositories.client_repository import ClientRepository
 from controllers.validators.validators import validate_amount, validate_date
+from decimal import Decimal
 
 
 class ContractController:
@@ -15,7 +17,7 @@ class ContractController:
         self.session = session
 
     @requires_role("gestion")
-    def create_contract(self, client_id: int, amount: float, is_signed: bool, end_date: str) -> Contract:
+    def create_contract(self, client_id: int, amount: Decimal, is_signed: bool, end_date: str) -> Contract:
         """
         Creates a new contract associated with a client.
 
@@ -28,6 +30,10 @@ class ContractController:
         # Input validation
         total_amount = validate_amount(amount)
         end_dt = validate_date(end_date)
+
+        # Ensure client exists
+        if not ClientRepository(self.session).get_by_id(client_id):
+            raise CrmNotFoundError("Client")
 
         # Get current user (commercial or gestion)
         user = get_current_user(self.session)
@@ -72,7 +78,7 @@ class ContractController:
         return contract
 
     @requires_ownership_or_role(get_contract_owner_id, 'gestion')
-    def update_contract(self, contract_id: int, amount: float = None, is_signed: bool = None, remaining: float = None, end_date: str = None) -> Contract:
+    def update_contract(self, contract_id: int, amount: Decimal = None, is_signed: bool = None, remaining: Decimal = None, end_date: str = None) -> Contract:
         """
         Updates an existing contract.
 
