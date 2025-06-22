@@ -31,6 +31,7 @@ def load_token(path: Path | None = None) -> str | None:
     Returns:
         str | None: The token string if successful, None otherwise.
     """
+
     if path is None:
         path = TOKEN_PATH
     try:
