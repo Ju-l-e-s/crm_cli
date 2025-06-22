@@ -20,6 +20,7 @@ class UsersView:
                 ("List users", self.list_users),
                 ("Add user", self.add_user) if self.user.role.value == "gestion" else None,
                 ("Edit user", self.edit_user) if self.user.role.value == "gestion" else None,
+                ("Delete user", self.delete_user) if self.user.role.value == "gestion" else None,
                 ("Back", lambda: "back"),
             ]
             valid_options = [opt for opt in options if opt]
@@ -72,5 +73,25 @@ class UsersView:
         try:
             u = self.controller.update_user(int(uid), **update_data)
             display_success(f"Updated user ID {u.id}")
+        except CrmInvalidValue as e:
+            display_error(str(e))
+            
+    def delete_user(self):
+        """Delete a user (gestion only)."""
+        try:
+            user_id = int(self.console.input("Enter user ID to delete: "))
+            
+            confirm = self.console.input(f"Are you sure you want to delete user ID {user_id}? (y/n): ")
+            if confirm != 'y':
+                display_success("Operation cancelled.")
+                return
+                
+            self.controller.delete_user(user_id)
+            display_success(f"User ID {user_id} has been deleted.")
+            
+        except ValueError:
+            display_error("Please enter a valid user ID (number).")
+        except CrmNotFoundError:
+            display_error("User not found.")
         except CrmInvalidValue as e:
             display_error(str(e))

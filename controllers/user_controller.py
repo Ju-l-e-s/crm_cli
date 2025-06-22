@@ -96,3 +96,11 @@ class UserController:
             return UserRepository(self.session).save(user)
         except Exception as e:
             raise CrmInvalidValue(f"Could not update user: {e}") from e
+        
+    @requires_role("gestion")
+    def delete_user(self, user_id: int) -> None:
+        """
+        Deletes a user (gestion only).
+        """
+        user = self.get_user_by_id(user_id)
+        UserRepository(self.session).delete(user)
