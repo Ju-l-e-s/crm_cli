@@ -1,4 +1,4 @@
-from exceptions import CrmInvalidValue, CrmNotFoundError
+from exceptions import CrmInvalidValue, CrmNotFoundError, CrmNotFoundError
 from decimal import Decimal
 from views.base import display_menu, display_error, display_success, create_table, display_info
 
@@ -65,12 +65,18 @@ class ContractsView:
 
     def add_contract(self):
         client_id = self.console.input("Client ID: ")
+        if not client_id.isdigit():
+            display_error("Client ID must be a positive integer.")
+            return
         amount = self.console.input("Total amount: ")
+        if not amount.isdigit():
+            display_error("Total amount must be a positive integer.")
+            return
         is_signed = self.console.input("Signed? (y/n): ")
         end_date = self.console.input("End date (YYYY-MM-DD): ")
+        
         try:
-            contract = self.controller.create_contract(int(client_id), Decimal(
-                amount), is_signed.lower().startswith('y'), end_date)
+            contract = self.controller.create_contract(int(client_id), Decimal(amount), is_signed.lower().startswith('y'), end_date)
             display_success(f"Created contract ID {contract.id}")
         except (CrmInvalidValue, CrmNotFoundError) as e:
             display_error(str(e))
