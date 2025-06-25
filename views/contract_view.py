@@ -74,9 +74,10 @@ class ContractsView:
             return
         is_signed = self.console.input("Signed? (y/n): ")
         end_date = self.console.input("End date (YYYY-MM-DD): ")
-        
+
         try:
-            contract = self.controller.create_contract(int(client_id), Decimal(amount), is_signed.lower().startswith('y'), end_date)
+            contract = self.controller.create_contract(int(client_id), Decimal(
+                amount), is_signed.lower().startswith('y'), end_date)
             display_success(f"Created contract ID {contract.id}")
         except (CrmInvalidValue, CrmNotFoundError) as e:
             display_error(str(e))
@@ -96,15 +97,33 @@ class ContractsView:
         is_signed = self.console.input(f"Signed? ([cyan]{contract.is_signed}[/cyan], y/n): ").strip()
         remaining = self.console.input(f"Remaining amount ([cyan]{contract.remaining_amount}[/cyan]): ").strip()
         end_date = self.console.input(f"End date ([cyan]{contract.end_date}[/cyan]): ").strip()
+
+        def parse_decimal(txt: str, current: Decimal) -> Decimal:
+            if not txt:
+                return current
+            try:
+                return Decimal(txt)
+            except Exception:
+                display_error("Invalid number format, keeping current value")
+                return current
+
+        amount = parse_decimal(amount, contract.total_amount)
+        remaining = parse_decimal(remaining, contract.remaining_amount)
+
+        if is_signed:
+            is_signed = is_signed.lower().startswith("y")
+        else:
+            is_signed = contract.is_signed
+
         update_data = {
-            'amount': Decimal(amount) if amount else contract.total_amount,
-            'is_signed': (is_signed.lower().startswith('y')) if is_signed else contract.is_signed,
-            'remaining': Decimal(remaining) if remaining else contract.remaining_amount,
-            'end_date': end_date or str(contract.end_date.strftime("%Y-%m-%d")),
+            "amount":    amount,
+            "is_signed": is_signed,
+            "remaining": remaining,
+            "end_date":  end_date or contract.end_date.strftime("%Y-%m-%d"),
         }
         try:
             contract = self.controller.update_contract(
-                int(contract_id), **update_data)
+                contract_id=int(contract_id), **update_data)
             display_success(f"Updated contract ID {contract.id}")
         except (CrmInvalidValue, CrmNotFoundError) as e:
             display_error(str(e))
