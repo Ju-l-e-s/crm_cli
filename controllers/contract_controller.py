@@ -32,16 +32,15 @@ class ContractController:
         end_dt = validate_date(end_date)
 
         # Ensure client exists
-        if not ClientRepository(self.session).get_by_id(client_id):
+        client = ClientRepository(self.session).get_by_id(client_id)
+        if not client:
             raise CrmNotFoundError("Client")
 
-        # Get current user (commercial or gestion)
-        user = get_current_user(self.session)
 
         # Build domain model
         contract = Contract(
             client_id=client_id,
-            commercial_id=user.id,
+            commercial_id=client.commercial_id,
             total_amount=total_amount,
             remaining_amount=total_amount,
             creation_date=datetime.now(),
