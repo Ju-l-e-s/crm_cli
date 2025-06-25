@@ -44,6 +44,11 @@ class UsersView:
         email = self.console.input("Email: ")
         role = self.console.input("Role (commercial/support/gestion): ")
         password = self.console.input("Password: ")
+        # Confirmation
+        confirm = self.console.input("Confirm password: ")
+        if password != confirm:
+            display_error("Passwords do not match. User creation aborted.")
+            return
         try:
             u = self.controller.create_user(fullname, email, role, password)
             display_success(f"Created user ID {u.id}")
