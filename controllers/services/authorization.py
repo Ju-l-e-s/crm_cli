@@ -23,31 +23,43 @@ def get_token_payload_or_raise() -> dict:
         raise CrmAuthenticationError()
     return decode_token(token)
 
+
 def get_client_owner_id(session, **kwargs):
     """
     Retrieves the commercial owner's ID for a client.
     Raises an exception if the client does not exist.
     """
+    # Handle both session and controller objects
+    if hasattr(session, 'session'):
+        session = session.session
     client = ClientRepository(session).get_by_id(kwargs["client_id"])
     if not client:
         raise CrmNotFoundError("Client")
     return client.commercial_id
+
 
 def get_contract_owner_id(session, contract_id: int) -> InstrumentedAttribute[int] | None:
     """
     Retrieves the commercial owner's ID for a contract.
     Raises an exception if the contract does not exist.
     """
+    # Handle both session and controller objects
+    if hasattr(session, 'session'):
+        session = session.session
     contract = ContractRepository(session).get_by_id(contract_id)
     if not contract:
         raise CrmNotFoundError("Contract")
     return contract.commercial_id
+
 
 def get_event_owner_id(session, event_id: int):
     """
     Retrieves the commercial owner's ID for an event (via the linked contract).
     Raises an exception if the event or its associated contract does not exist.
     """
+    # Handle both session and controller objects
+    if hasattr(session, 'session'):
+        session = session.session
     event = EventRepository(session).get_by_id(event_id)
     if not event:
         raise CrmNotFoundError("Event")
@@ -58,6 +70,7 @@ def get_event_owner_id(session, event_id: int):
     return contract.commercial_id
 
 # --- Permission decorators ---
+
 
 def requires_role(required_role: str):
     """
@@ -73,6 +86,7 @@ def requires_role(required_role: str):
         return wrapper
     return decorator
 
+
 def requires_self_or_role(required_role: str):
     """
     Decorator to restrict access to the user themselves or users with a specific role.
@@ -86,6 +100,7 @@ def requires_self_or_role(required_role: str):
             return func(*args, **kwargs)
         return wrapper
     return decorator
+
 
 def requires_ownership_or_role(get_owner_id, required_role: str):
     """
@@ -110,7 +125,14 @@ def requires_ownership_or_role(get_owner_id, required_role: str):
                 return func(*args, **kwargs)
 
             # Otherwise, check resource ownership
-            owner_id = get_owner_id(session, **kwargs)
+            # Create a clean dict with only the ID parameter that the get_owner_id function expects
+            owner_kwargs = {'session': session}
+            if 'client_id' in kwargs:
+                owner_kwargs['client_id'] = kwargs['client_id']
+            elif 'contract_id' in kwargs:
+                owner_kwargs['contract_id'] = kwargs['contract_id']
+
+            owner_id = get_owner_id(**owner_kwargs)
             if owner_id != current_user_id:
                 raise CrmForbiddenAccessError
 
