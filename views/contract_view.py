@@ -1,129 +1,218 @@
-from exceptions import CrmInvalidValue, CrmNotFoundError, CrmNotFoundError
 from decimal import Decimal
-from views.base import display_menu, display_error, display_success, create_table, display_info
+from typing import Dict
 
-from controllers.contract_controller import ContractController
+from exceptions import CrmInvalidValue
+from models.contract import Contract
+
+from .base import (
+    create_table,
+    display_error,
+    display_info,
+    display_menu,
+    display_success,
+)
 
 
 class ContractsView:
-    def __init__(self, user, console, session):
+    """
+    CLI view for contract management: prompts and displays only.
+
+
+    Attributes:
+        user: The current user instance.
+        console: The console instance used for all output operations.
+    """
+
+    def __init__(self, user, console):
+        """
+        Initialize the ContractsView with user and console instances.
+
+        Args:
+            user: The current user instance.
+            console: The console instance to use for output operations.
+        """
         self.user = user
         self.console = console
-        self.controller = ContractController(session)
 
-    def show_menu(self):
+    def show_menu(self, role: str) -> str:
         """
-        Display the contracts menu and handle user input.
+        Display the contracts menu and return the chosen action label.
+
+        Args:
+            role: Role of the current user ('commercial' or 'gestion').
+
+        Returns:
+            str: The label of the selected menu option.
         """
-        while True:
-            options = [
-                ("List all contracts", self.list_all),
-                ("List my contracts",
-                 self.list_mine) if self.user.role.value == "commercial" else None,
-                ("Add contract", self.add_contract) if self.user.role.value == "gestion" else None,
-                ("Edit contract", self.edit_contract) if self.user.role.value in (
-                    "gestion", "commercial") else None,
-                ("Back", lambda: "back"),
-            ]
-            valid_options = [opt for opt in options if opt]
-            choice_idx = display_menu(
-                "Contracts Menu", [label for label, _ in valid_options]) - 1
-            label, action = valid_options[choice_idx]
-            if action() == "back":
-                break
+        options = ["List all contracts"]
+        if role == "commercial":
+            options.append("List my contracts")
+            options.append("List unsigned contracts")
+            options.append("List unpaid contracts")
+        if role == "gestion":
+            options.append("Add contract")
+        if role in ("commercial", "gestion"):
+            options.append("Edit contract")
+        options.append("Back")
 
-    def list_all(self):
-        try:
-            ctrs = self.controller.list_all_contracts()
-            if not ctrs:
-                display_info("No contracts found.", clear=False)
-                return
+        choice = display_menu("Contracts Menu", options)
+        return options[choice - 1]
 
-            table = create_table(
-                "All Contracts", ["ID", "Client", "Total", "Remaining", "Signed", "End date"])
-            for contract in ctrs:
-                table.add_row(str(contract.id), str(contract.client_id), f"{contract.total_amount}", f"{contract.remaining_amount}", str(
-                    contract.is_signed), str(contract.end_date.strftime("%Y-%m-%d")))
-            self.console.print(table)
-        except (CrmInvalidValue, CrmNotFoundError) as e:
-            display_error(str(e))
+    def display_contract_table(
+        self,
+        contracts: list[Contract],
+        title: str = "Contracts"
+    ) -> None:
+        """
+        Display a table of contracts.
 
-    def list_mine(self):
-        try:
-            ctrs = self.controller.list_by_commercial()
-            if not ctrs:
-                display_info("You don't have any contracts.", clear=False)
-                return
+        Args:
+            contracts: List of Contract objects to display.
+            title: Optional title for the table. Defaults to "Contracts".
+        """
+        if not contracts:
+            msg = "No contracts found."
+            display_info(msg, clear=False)
+            return
 
-            table = create_table("My Contracts", ["ID", "Client", "Total"])
-            for contract in ctrs:
-                table.add_row(str(contract.id), str(
-                    contract.client_id), f"{contract.total_amount}")
-            self.console.print(table)
-        except (CrmInvalidValue, CrmNotFoundError) as e:
-            display_error(str(e))
+        cols = [
+            "ID",
+            "Client",
+            "Commercial",
+            "Total",
+            "Remaining",
+            "Signed",
+            "Created",
+            "End date",
+        ]
+        table = create_table(title, cols)
+        for contract in contracts:
+            created = (
+                contract.creation_date.strftime("%Y-%m-%d")
+                if hasattr(contract, "creation_date") and contract.creation_date
+                else "-"
+            )
+            commercial = getattr(contract, "commercial", None)
+            commercial_name = (
+                commercial.fullname
+                if commercial and hasattr(commercial, "fullname")
+                else str(getattr(contract, "commercial_id", "-"))
+            )
 
-    def add_contract(self):
+            table.add_row(
+                str(contract.id),
+                contract.client.fullname
+                if hasattr(contract, "client")
+                else str(getattr(contract, "client_id", "-")),
+                commercial_name,
+                f"{contract.total_amount}",
+                f"{contract.remaining_amount}",
+                "Yes" if contract.is_signed else "No",
+                created,
+                contract.end_date.strftime("%Y-%m-%d")
+                if hasattr(contract, "end_date") and contract.end_date
+                else "-",
+            )
+        self.console.print(table)
+
+    def prompt_new_contract(self) -> Dict[str, any]:
+        """
+        Prompt for new contract data.
+
+        Returns:
+            Dict containing the new contract's information:
+                - client_id: ID of the client (int)
+                - amount: Total amount (Decimal)
+                - is_signed: Whether the contract is signed (bool)
+                - end_date: End date of the contract (str)
+
+        Raises:
+            CrmInvalidValue: If client_id is not a positive integer or amount is not a number.
+        """
         client_id = self.console.input("Client ID: ")
         if not client_id.isdigit():
-            display_error("Client ID must be a positive integer.")
-            return
-        amount = self.console.input("Total amount: ")
-        if not amount.isdigit():
-            display_error("Total amount must be a positive integer.")
-            return
-        is_signed = self.console.input("Signed? (y/n): ")
+            raise CrmInvalidValue("Client ID must be a positive integer.")
+
+        amount_str = self.console.input("Total amount: ")
+        try:
+            amount = Decimal(amount_str)
+        except:
+            raise CrmInvalidValue("Total amount must be a number.")
+
+        is_signed = self.console.input(
+            "Signed? (y/n): ").lower().startswith("y")
         end_date = self.console.input("End date (YYYY-MM-DD): ")
 
-        try:
-            contract = self.controller.create_contract(int(client_id), Decimal(
-                amount), is_signed.lower().startswith('y'), end_date)
-            display_success(f"Created contract ID {contract.id}")
-        except (CrmInvalidValue, CrmNotFoundError) as e:
-            display_error(str(e))
-
-    def edit_contract(self):
-        contract_id = self.console.input("Contract ID to edit: ")
-        if not contract_id.isdigit():
-            display_error("Invalid ID")
-            return
-        try:
-            contract = self.controller.get_contract_by_id(int(contract_id))
-        except CrmNotFoundError as e:
-            display_error(str(e))
-            return
-        self.console.print("[italic]Press Enter to keep the current value.[/italic]")
-        amount = self.console.input(f"New total amount ([cyan]{contract.total_amount}[/cyan]): ").strip()
-        is_signed = self.console.input(f"Signed? ([cyan]{contract.is_signed}[/cyan], y/n): ").strip()
-        remaining = self.console.input(f"Remaining amount ([cyan]{contract.remaining_amount}[/cyan]): ").strip()
-        end_date = self.console.input(f"End date ([cyan]{contract.end_date}[/cyan]): ").strip()
-
-        def parse_decimal(txt: str, current: Decimal) -> Decimal:
-            if not txt:
-                return current
-            try:
-                return Decimal(txt)
-            except Exception:
-                display_error("Invalid number format, keeping current value")
-                return current
-
-        amount = parse_decimal(amount, contract.total_amount)
-        remaining = parse_decimal(remaining, contract.remaining_amount)
-
-        if is_signed:
-            is_signed = is_signed.lower().startswith("y")
-        else:
-            is_signed = contract.is_signed
-
-        update_data = {
-            "amount":    amount,
+        return {
+            "client_id": int(client_id),
+            "amount": amount,
             "is_signed": is_signed,
-            "remaining": remaining,
-            "end_date":  end_date or contract.end_date.strftime("%Y-%m-%d"),
+            "end_date": end_date,
         }
-        try:
-            contract = self.controller.update_contract(
-                contract_id=int(contract_id), **update_data)
-            display_success(f"Updated contract ID {contract.id}")
-        except (CrmInvalidValue, CrmNotFoundError) as e:
-            display_error(str(e))
+
+    def prompt_contract_id(self) -> int:
+        """
+        Prompt for a contract ID.
+
+        Returns:
+            int: The contract ID entered by the user.
+
+        Raises:
+            CrmInvalidValue: If the input is not a valid integer.
+        """
+        val = self.console.input("Contract ID to edit: ")
+        if not val.isdigit():
+            raise CrmInvalidValue("Invalid ID")
+        return int(val)
+
+    def prompt_edit_contract(self, contract: Contract) -> Dict[str, any]:
+        """
+        Prompt for updated contract information.
+
+        Args:
+            contract: The Contract object being edited.
+
+        Returns:
+            Dict containing the updated contract information with optional keys:
+                - amount: New total amount (Decimal, optional)
+                - remaining: New remaining amount (Decimal, optional)
+                - is_signed: New signed status (bool, optional)
+                - end_date: New end date (str, optional)
+        """
+        self.console.print(
+            "[italic]Press Enter to keep the current value.[/italic]")
+
+        amount = self.console.input(
+            f"New total amount ([cyan]{contract.total_amount}[/cyan]): ").strip()
+        remaining = self.console.input(
+            f"New remaining amount ([cyan]{contract.remaining_amount}[/cyan]): ").strip()
+        signed = self.console.input(
+            f"Signed? ([cyan]{'Yes' if contract.is_signed else 'No'})[/cyan], y/n: ").strip()
+        end_date = self.console.input(
+            f"End date ([cyan]{contract.end_date.strftime('%Y-%m-%d')}[/cyan]): ").strip()
+
+        data = {
+            "amount": Decimal(amount) if amount else None,
+            "remaining": Decimal(remaining) if remaining else None,
+            "is_signed": signed.lower().startswith("y") if signed else None,
+            "end_date": end_date if end_date else None,
+        }
+        return data
+
+    def show_success(self, message: str) -> None:
+        """
+        Display a success message.
+
+        Args:
+            message: The success message to display.
+        """
+        display_success(message)
+
+    def show_error(self, message: str) -> None:
+        """
+        Display an error message.
+
+        Args:
+            message: The error message to display.
+        """
+        display_error(message)

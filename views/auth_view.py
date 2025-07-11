@@ -1,40 +1,37 @@
-from getpass import getpass
 from config.console import console
-from rich.prompt import Prompt
-
-from controllers.user_controller import UserController
-from controllers.services.token_cache import delete_token as auth_logout
-from exceptions import CrmInvalidValue
-from database.session import SessionLocal
 from views.base import display_error, display_info
 
 
-def prompt_login():
+def get_credentials():
     """
-    Display the login form and return the connected user
+    Display the login form and return (email, password).
     """
-    session = SessionLocal()
+    console.print("\n[bold]Login[/]\n")
     try:
-        console.print("\n[bold]Login[/]")
-        email = Prompt.ask("Email")
-        password = getpass("Password: ")
-        
-        user_controller = UserController(session)
-        user = user_controller.authenticate(email, password)
-        return user
-    except CrmInvalidValue as e:
-        display_error(str(e))
-        return None
-    except Exception as e:
-        display_error(str(e))
-        return None
-    finally:
-        session.close()
+        email = console.input("Email: ")
+        password = console.input("Password: ", password=True)
+        return email, password
+    except UnicodeDecodeError:
+        show_login_error("Invalid input")
+        return get_credentials()
 
-def logout():
+
+def show_login_success(user):
     """
-    Logout the user
+    Display a welcome message after successful login.
     """
-    auth_logout()
-    console.clear()
+    display_info(f"\nWelcome, {user.fullname}!\n")
+
+
+def show_login_error(message: str):
+    """
+    Display a specific login error message.
+    """
+    display_error(message)
+
+
+def show_logout_success():
+    """
+    Display a logout confirmation message.
+    """
     display_info("\nLogout successful\n")

@@ -1,102 +1,208 @@
-from views.base import create_table
-from exceptions import CrmInvalidValue, CrmNotFoundError
-from views.base import display_menu, display_error, display_success
+from typing import Dict
 
-from controllers.user_controller import UserController
+from exceptions import CrmInvalidValue
+
+from views.base import (
+    create_table,
+    display_error,
+    display_info,
+    display_menu,
+    display_success,
+)
 
 
 class UsersView:
-    def __init__(self, user, console, session):
-        self.user = user
+    """CLI view for user management: prompts and displays.
+
+    This class provides all the user interface components for user management,
+    including displaying menus, forms, and user data in a tabular format.
+    It handles all user interactions related to user operations.
+
+    Attributes:
+        console: The console instance used for all output operations.
+    """
+
+    def __init__(self, console):
+        """Initialize the UsersView with a console instance.
+
+        Args:
+            console: The console instance to use for output operations.
+        """
         self.console = console
-        self.controller = UserController(session)
 
-    def show_menu(self):
+    def show_menu(self) -> str:
         """
-        Display the users menu and handle user input. Gestion only.
+        Display the users menu and return the chosen action label.
+
+        Returns:
+            str: The label of the selected menu option. One of:
+                - 'List users'
+                - 'Add user'
+                - 'Edit user'
+                - 'Delete user'
+                - 'Back'
         """
-        while True:
-            options = [
-                ("List users", self.list_users),
-                ("Add user", self.add_user) if self.user.role.value == "gestion" else None,
-                ("Edit user", self.edit_user) if self.user.role.value == "gestion" else None,
-                ("Delete user", self.delete_user) if self.user.role.value == "gestion" else None,
-                ("Back", lambda: "back"),
-            ]
-            valid_options = [opt for opt in options if opt]
-            choice_idx = display_menu("Collaborators Menu", [label for label, _ in valid_options]) - 1
-            _, action = valid_options[choice_idx]
-            if action() == "back":
-                break
+        options = [
+            "List users",
+            "Add user",
+            "Edit user",
+            "Delete user",
+            "Back",
+        ]
+        choice = display_menu("Collaborators Menu", options)
+        return options[choice-1]
 
-    def list_users(self):
-        try:
-            users = self.controller.list_all_users()
-            table = create_table("All Users", ["ID", "Name", "Email", "Role"])
-            for u in users:
-                table.add_row(str(u.id), u.fullname, u.email, u.role.value)
-            self.console.print(table)
-        except CrmInvalidValue as e:
-            display_error(str(e))
+    def display_user_table(self, users) -> None:
+        """
+        Display a table of users.
 
-    def add_user(self):
-        fullname = self.console.input("Full name: ")
+        Args:
+            users: A list of User objects to display.
+        """
+        table = create_table("All Users", ["ID", "Name", "Email", "Role"])
+        for user in users:
+            table.add_row(
+                str(user.id),
+                user.fullname,
+                user.email,
+                user.role.value
+            )
+        self.console.print(table)
+
+    def prompt_new_user(self) -> Dict[str, str]:
+        """
+        Prompt for new user data.
+
+        Returns:
+            Dict[str, str]: A dictionary containing the new user's information:
+                - fullname: Full name of the user
+                - email: Email address
+                - role: User role (commercial/support/gestion)
+                - password: User's password
+
+        Raises:
+            CrmInvalidValue: If passwords do not match.
+        """
+        name = self.console.input("Full name: ")
         email = self.console.input("Email: ")
         role = self.console.input("Role (commercial/support/gestion): ")
-        password = self.console.input("Password: ")
-        # Confirmation
-        confirm = self.console.input("Confirm password: ")
-        if password != confirm:
-            display_error("Passwords do not match. User creation aborted.")
-            return
-        try:
-            u = self.controller.create_user(fullname, email, role, password)
-            display_success(f"Created user ID {u.id}")
-        except CrmInvalidValue as e:
-            display_error(str(e))
+        password = self.console.input("Password: ", password=True)
+        confirm = self.console.input("Confirm password: ", password=True)
 
-    def edit_user(self):
-        uid = self.console.input("User ID to edit: ")
-        if not uid.isdigit():
-            display_error("Invalid ID", clear=False)
-            return
-        try:
-            user = self.controller.get_user_by_id(int(uid))
-        except CrmNotFoundError as e:
-            display_error(str(e))
-            return
-        console = self.console
-        console.print("[italic]Press Enter to keep the current value.[/italic]")
-        name = console.input(f"New name ([cyan]{user.fullname}[/cyan]): ").strip()
-        email = console.input(f"New email ([cyan]{user.email}[/cyan]): ").strip()
-        role = console.input(f"New role ([cyan]{user.role.value}[/cyan]): ").strip()
-        update_data = {
-            'fullname': name or user.fullname,
-            'email':    email or user.email,
-            'role':     role or user.role.value,
+        if password != confirm:
+            raise CrmInvalidValue(
+                "Passwords do not match. User creation aborted.")
+
+        return {
+            "fullname": name,
+            "email": email,
+            "role": role,
+            "password": password
         }
-        try:
-            u = self.controller.update_user(int(uid), **update_data)
-            display_success(f"Updated user ID {u.id}")
-        except CrmInvalidValue as e:
-            display_error(str(e))
-            
-    def delete_user(self):
-        """Delete a user (gestion only)."""
-        try:
-            user_id = int(self.console.input("Enter user ID to delete: "))
-            
-            confirm = self.console.input(f"Are you sure you want to delete user ID {user_id}? (y/n): ")
-            if confirm != 'y':
-                display_success("Operation cancelled.")
-                return
-                
-            self.controller.delete_user(user_id)
-            display_success(f"User ID {user_id} has been deleted.")
-            
-        except ValueError:
-            display_error("Please enter a valid user ID (number).")
-        except CrmNotFoundError:
-            display_error("User not found.")
-        except CrmInvalidValue as e:
-            display_error(str(e))
+
+    def prompt_user_id(self, message: str) -> int:
+        """Prompt for a user ID.
+
+        Args:
+            message: The prompt message to display to the user.
+
+        Returns:
+            int: The user ID entered by the user.
+
+        Raises:
+            CrmInvalidValue: If the input is not a valid integer.
+        """
+        uid = self.console.input(message)
+
+        if not uid.isdigit():
+            raise CrmInvalidValue("Invalid ID")
+
+        return int(uid)
+
+    def prompt_edit_user(self, user) -> Dict[str, str]:
+        """
+        Prompt for updated user information.
+
+        Args:
+            user: The User object being edited.
+
+        Returns:
+            Dict[str, str]: A dictionary containing the updated user information:
+                - fullname: Updated full name
+                - email: Updated email
+                - role: Updated role
+                - password: New password (if changed, empty string otherwise)
+
+        Raises:
+            CrmInvalidValue: If passwords do not match.
+        """
+        self.console.print(
+            "[italic]Press Enter to keep the current value.[/italic]")
+        name = self.console.input(
+            f"New full name ([cyan]{user.fullname}[/cyan]): ").strip() or user.fullname
+        email = self.console.input(
+            f"New email ([cyan]{user.email}[/cyan]): ").strip() or user.email
+        role = self.console.input(
+            f"New role ([cyan]{user.role.value}[/cyan]): ").strip() or user.role.value
+
+        password = self.console.input(
+            "New password (leave blank to keep current): ",
+            password=True
+        )
+
+        if password:
+            confirm = self.console.input(
+                "Confirm new password: ",
+                password=True
+            )
+            if password != confirm:
+                raise CrmInvalidValue(
+                    "Passwords do not match. User update aborted.")
+
+        return {
+            "fullname": name,
+            "email": email,
+            "role": role,
+            "password": password
+        }
+
+    def prompt_delete_confirmation(self, user_id: int) -> bool:
+        """
+        Prompt for user deletion confirmation.
+
+        Args:
+            user_id: The ID of the user to be deleted.
+
+        Returns:
+            bool: True if the user confirms deletion, False otherwise.
+        """
+        answer = self.console.input(
+            f"Are you sure you want to delete user ID {user_id}? (y/n): ")
+        return answer.lower() == 'y'
+
+    def show_success(self, message: str) -> None:
+        """
+        Display a success message.
+
+        Args:
+            message: The success message to display.
+        """
+        display_success(message)
+
+    def show_error(self, message: str) -> None:
+        """
+        Display an error message.
+
+        Args:
+            message: The error message to display.
+        """
+        display_error(message)
+
+    def show_info(self, message: str) -> None:
+        """
+        Display an informational message.
+
+        Args:
+            message: The info message to display.
+        """
+        display_info(message)
