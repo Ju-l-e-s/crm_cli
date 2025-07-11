@@ -1,17 +1,24 @@
+import re
+import os
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from models.base import Base
-from unittest.mock import MagicMock
 import pexpect
-import re
+from unittest.mock import MagicMock
 
-
-from models.user import User
-from models.user_role import UserRole
+from models.base import Base
+from models.event import Event
 from models.client import Client
 from models.contract import Contract
-from models.event import Event
+from models.user_role import UserRole
+from models.user import User
+
+
+# Disable Sentry for the during the tests
+@pytest.fixture(autouse=True, scope="session")
+def _disable_sentry():
+    os.environ["DISABLE_SENTRY"] = "1"
 
 
 @pytest.fixture
@@ -71,7 +78,7 @@ def seeded_user_commercial(session):
     return user
 
 
-def _make_console():
+def make_console():
     """Return a MagicMock console with input, print and clear methods."""
     console = MagicMock()
     console.input = MagicMock()
@@ -86,8 +93,7 @@ def get_app_cmd() -> str:
     Get the application command to run the CLI.
 
     Returns:
-        str: The command to run the application, either from environment variable
-             or defaulting to 'poetry run python main.py' or 'python main.py'.
+        str: The command to run the application
     """
     try:
         return os.environ.get("APP_CMD", "poetry run python main.py")
@@ -100,8 +106,16 @@ APP_CMD = get_app_cmd()
 # Functions for integration tests
 
 
-def login(cli, email, pwd, fullname):
-    """Helper for user login."""
+def login(cli, email, pwd, fullname) -> None:
+    """
+    Helper for user login.
+
+    Args:
+        cli (pexpect.spawn): The CLI to interact with.
+        email (str): The user's email.
+        pwd (str): The user's password.
+        fullname (str): The user's full name.
+    """
     cli.expect("Email:")
     cli.sendline(email)
     cli.expect("Password:")
@@ -109,9 +123,16 @@ def login(cli, email, pwd, fullname):
     cli.expect(fr"Welcome {fullname}")
 
 
-def nav_main(cli, label, role=None):
-    """Navigation in the main menu."""
-    cli.expect("Main Menu")
+def nav_main(cli, label, role=None) -> None:
+    """
+    Navigation in the main menu.
+
+    Args:
+        cli (pexpect.spawn): The CLI to interact with.
+        label (str): The label of the menu item to navigate to.
+        role (str, optional): The role of the user. Defaults to None.
+    """
+    cli.expect("Your choice:")
     if role == "gestion":
         menu_map = {
             "Clients": "1",
@@ -132,8 +153,15 @@ def nav_main(cli, label, role=None):
     cli.sendline(menu_map[label])
 
 
-def nav_submenu(cli, menu_text, option):
-    """Navigation in the submenu."""
+def nav_submenu(cli, menu_text, option) -> None:
+    """
+    Navigation in the submenu.
+
+    Args:
+        cli (pexpect.spawn): The CLI to interact with.
+        menu_text (str): The text of the menu item to navigate to.
+        option (str): The option to select.
+    """
     cli.expect(menu_text)
     cli.sendline(option)
 
@@ -141,6 +169,12 @@ def nav_submenu(cli, menu_text, option):
 def extract_id(cli: pexpect.spawn) -> int:
     """
     Get all numbers from the buffer and return the last one.
+
+    Args:
+        cli (pexpect.spawn): The CLI to interact with.
+
+    Returns:
+        int: The last number found in the buffer.
     """
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
@@ -159,7 +193,15 @@ def extract_id(cli: pexpect.spawn) -> int:
 
 @pytest.fixture
 def setup_test_users(session):
-    """Create test users for integration tests."""
+    """
+    Create test users for integration tests.
+
+    Args:
+        session (Session): The database session.
+
+    Returns:
+        dict: A dictionary of test users.
+    """
     # Commercial user
     commercial = User(
         fullname="Bart Simpson",
