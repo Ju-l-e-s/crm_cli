@@ -1,7 +1,5 @@
 from pathlib import Path
-import logging
-
-logger = logging.getLogger(__name__)
+from exceptions import CrmError
 
 TOKEN_PATH = Path.home() / ".epicevents_jwt"
 
@@ -19,7 +17,7 @@ def save_token(token: str, path: Path | None = None) -> None:
         with open(path, "w") as f:
             f.write(token)
     except OSError as e:
-        logger.error(f"Failed to save token to {path}: {e}")
+        raise CrmError(f"Failed to save token to {path}: {e}")
 
 def load_token(path: Path | None = None) -> str | None:
     """
@@ -39,10 +37,9 @@ def load_token(path: Path | None = None) -> str | None:
             token = f.read().strip()
             return token if token else None
     except FileNotFoundError:
-        logger.warning(f"Token file not found at {path}.")
+        return None
     except OSError as e:
-        logger.error(f"Failed to load token from {path}: {e}")
-    return None
+        raise CrmError(f"Failed to load token from {path}: {e}") from e
 
 def delete_token(path: Path | None = None) -> None:
     """
@@ -56,6 +53,6 @@ def delete_token(path: Path | None = None) -> None:
     try:
         path.unlink()
     except FileNotFoundError:
-        logger.info(f"Token file already deleted or does not exist at {path}.")
+        pass
     except OSError as e:
-        logger.error(f"Failed to delete token at {path}: {e}")
+        raise CrmError(f"Failed to delete token at {path}: {e}") from e
