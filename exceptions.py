@@ -5,6 +5,7 @@ class CrmError(Exception):
 
 class CrmForbiddenAccessError(CrmError):
     """Raised when a user tries to access a forbidden resource."""
+
     def __init__(self, message=None):
         if message is None:
             message = "Forbidden: you do not have permission to access this resource."
@@ -13,6 +14,7 @@ class CrmForbiddenAccessError(CrmError):
 
 class CrmInvalidValue(CrmError, ValueError):
     """Raised when a value is invalid (validation, parsing, etc)."""
+
     def __init__(self, message=None):
         if message is None:
             message = "Invalid value."
@@ -21,6 +23,7 @@ class CrmInvalidValue(CrmError, ValueError):
 
 class CrmNotFoundError(CrmError):
     """Raised when a resource is not found."""
+
     def __init__(self, resource="Resource", message=None):
         if message is None:
             message = f"{resource} not found."
@@ -29,6 +32,7 @@ class CrmNotFoundError(CrmError):
 
 class CrmIntegrityError(CrmError):
     """Raised when there is a database integrity error."""
+
     def __init__(self, message=None):
         if message is None:
             message = "Integrity error."
@@ -37,6 +41,7 @@ class CrmIntegrityError(CrmError):
 
 class CrmAuthenticationError(CrmError):
     """Raised when authentication fails or is missing."""
+
     def __init__(self, message=None):
         if message is None:
             message = "Authentication required."
