@@ -1,6 +1,3 @@
-# tests/unit/test_event_repository.py
-
-import pytest
 from datetime import datetime, timedelta
 
 from controllers.repositories.event_repository import EventRepository

@@ -77,3 +77,47 @@ def test_list_by_commercial(session, seeded_user_commercial):
     clients = repo.list_by_commercial(seeded_user_commercial.id)
     assert len(clients) >= 1
     assert all(c.commercial_id == seeded_user_commercial.id for c in clients)
+    
+
+def test_delete_client(session, seeded_user_commercial):
+    repo = ClientRepository(session)
+    client = Client(
+        fullname="Client Delete",
+        email="delete@email.com",
+        commercial_id=seeded_user_commercial.id
+    )
+    saved = repo.save(client)
+    repo.delete(saved)
+    result = repo.get_by_id(saved.id)
+    assert result is None
+
+def test_delete_client_not_found(session, seeded_user_commercial):
+    repo = ClientRepository(session)
+    client = Client(
+        fullname="Client Delete",
+        email="delete@email.com",
+        commercial_id=seeded_user_commercial.id
+    )
+    saved = repo.save(client)
+    repo.delete(saved)
+    result = repo.get_by_id(saved.id)
+    assert result is None
+    
+
+def test_get_client_by_phone(session, seeded_user_commercial):
+    repo = ClientRepository(session)
+    client = Client(
+        fullname="Client Phone",
+        email="phone@email.com",
+        phone="1234567890",
+        commercial_id=seeded_user_commercial.id
+    )
+    saved = repo.save(client)
+    result = repo.get_by_phone(saved.phone)
+    assert result is not None
+    assert result.phone == "1234567890"
+    
+def test_get_client_by_phone_not_found(session, seeded_user_commercial):
+    repo = ClientRepository(session)
+    result = repo.get_by_phone("1234567890")
+    assert result is None

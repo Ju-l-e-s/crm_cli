@@ -1,143 +1,152 @@
-import datetime
+import pytest
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from datetime import date
+from exceptions import CrmInvalidValue
+from tests.conftest import make_console
+from views.contract_view import ContractsView
 
 
-from exceptions import CrmInvalidValue, CrmNotFoundError
-from tests.conftest import _make_console
-
-# Tests for list_all & list_mine
-def test_contracts_view_list_all_empty(session):
-    from views.contract_view import ContractsView
-
-    console = _make_console()
-    view = ContractsView(user=MagicMock(role=MagicMock(
-        value="gestion")), console=console, session=session)
-
-    with patch("views.contract_view.ContractController.list_all_contracts", return_value=[]), \
-            patch("views.contract_view.display_info") as mock_info:
-        view.list_all()
-        mock_info.assert_called_once_with("No contracts found.", clear=False)
+class DummyClient:
+    def __init__(self, fullname):
+        self.fullname = fullname
 
 
-def test_contracts_view_list_all_with_data(session):
-    from views.contract_view import ContractsView
-
-    contract = MagicMock()
-    contract.id = 1
-    contract.client_id = 2
-    contract.total_amount = Decimal("100")
-    contract.remaining_amount = Decimal("0")
-    contract.is_signed = True
-    contract.end_date = datetime.date(2025, 12, 31)
-
-    console = _make_console()
-    contract = MagicMock()
-    contract.id = 1
-    contract.client_id = 2
-    contract.total_amount = Decimal("100")
-    contract.remaining_amount = Decimal("0")
-    contract.is_signed = True
-    contract.end_date = datetime.date(2025, 12, 31)
-    
-    view = ContractsView(user=MagicMock(role=MagicMock(
-        value="gestion")), console=console, session=session)
-
-    with patch("views.contract_view.ContractController.list_all_contracts", return_value=[contract]) as mock_list, \
-            patch("views.contract_view.create_table") as mock_table:
-        table_instance = MagicMock()
-        mock_table.return_value = table_instance
-        view.list_all()
-        mock_list.assert_called_once()
-        table_instance.add_row.assert_called_once_with(
-            str(contract.id), str(contract.client_id), f"{contract.total_amount}", f"{contract.remaining_amount}", str(
-                contract.is_signed), str(contract.end_date.strftime("%Y-%m-%d"))
-        )
+class DummyContract:
+    def __init__(self, id, client_fullname, total_amount, remaining_amount, is_signed, end_date):
+        self.id = id
+        self.client = DummyClient(client_fullname)
+        self.total_amount = total_amount
+        self.remaining_amount = remaining_amount
+        self.is_signed = is_signed
+        self.end_date = end_date
 
 
-def test_contracts_view_list_mine_empty(session):
-    from views.contract_view import ContractsView
-
-    console = _make_console()
-    view = ContractsView(user=MagicMock(role=MagicMock(
-        value="commercial")), console=console, session=session)
-    with patch("views.contract_view.ContractController.list_by_commercial", return_value=[]), \
-            patch("views.contract_view.display_info") as mock_info:
-        view.list_mine()
-        mock_info.assert_called_once_with(
-            "You don't have any contracts.", clear=False)
+def test_show_menu_commercial(monkeypatch):
+    fake_console = make_console()
+    # Simulate choosing “List unsigned contracts”
+    monkeypatch.setattr(
+        'views.contract_view.display_menu',
+        lambda title, opts: opts.index('List unsigned contracts') + 1
+    )
+    view = ContractsView(user=None, console=fake_console)
+    assert view.show_menu('commercial') == 'List unsigned contracts'
 
 
-def test_contracts_view_add_success(session):
-    from views.contract_view import ContractsView
-
-    console = _make_console()
-    console.input.side_effect = ["2", "150", "n", "2026-01-01"]
-    view = ContractsView(user=MagicMock(role=MagicMock(
-        value="gestion")), console=console, session=session)
-
-    mock_contract = MagicMock(id=99)
-    with patch("views.contract_view.ContractController.create_contract", return_value=mock_contract) as mock_create, \
-            patch("views.contract_view.display_success") as mock_success:
-        view.add_contract()
-        mock_create.assert_called_once_with(
-            2, Decimal("150"), False, "2026-01-01")
-        mock_success.assert_called_once_with("Created contract ID 99")
+def test_show_menu_gestion(monkeypatch):
+    fake_console = make_console()
+    # Simulate choosing “Add contract”
+    monkeypatch.setattr(
+        'views.contract_view.display_menu',
+        lambda title, opts: opts.index('Add contract') + 1
+    )
+    view = ContractsView(user=None, console=fake_console)
+    assert view.show_menu('gestion') == 'Add contract'
 
 
-def test_contracts_view_add_invalid_client_error(session):
-    """If client does not exist, controller should raise CrmNotFoundError and view shows error."""
-    from views.contract_view import ContractsView
+def test_display_contract_table_with_data(monkeypatch):
+    fake_console = make_console()
+    contracts = [
+        DummyContract(1, 'Alice', Decimal('100'), Decimal('50'), True,  date(2025, 1,  1)),
+        DummyContract(2, 'Bob',   Decimal('200'), Decimal('150'), False, date(2025, 6, 30)),
+    ]
+    printed = {}
+    fake_console.print = lambda tbl: printed.setdefault('table', tbl)
+    view = ContractsView(user=None, console=fake_console)
 
-    console = _make_console()
-    console.input.side_effect = ["1", "100", "y", "2025-12-31"]
-    view = ContractsView(user=MagicMock(role=MagicMock(
-        value="gestion")), console=console, session=session)
-
-    with patch("views.contract_view.ContractController.create_contract", side_effect=CrmNotFoundError("Client")) as mock_create, \
-            patch("views.contract_view.display_error") as mock_display_error:
-        view.add_contract()
-        mock_create.assert_called_once()
-        mock_display_error.assert_called_once()
-        assert console.input.call_count == 4
-
-
-def test_contracts_view_add_contract_error(session):
-    """If input validation fails (CrmInvalidValue), view should show error."""
-    from views.contract_view import ContractsView
-
-    console = _make_console()
-    console.input.side_effect = ["3", "100", "y", "2025-12-31"]
-    view = ContractsView(user=MagicMock(role=MagicMock(
-        value="gestion")), console=console, session=session)
-    with patch("views.contract_view.ContractController.create_contract", side_effect=CrmInvalidValue("bad")) as mock_create, \
-            patch("views.contract_view.display_error") as mock_error:
-        view.add_contract()
-        mock_create.assert_called_once()
-        mock_error.assert_called_once()
-
-# Tests for edit_contract
-def test_contracts_view_edit_contract_not_found(session):
-    from views.contract_view import ContractsView
-
-    console = _make_console()
-    console.input.return_value = "5"
-    view = ContractsView(user=MagicMock(role=MagicMock(
-        value="gestion")), console=console, session=session)
-    with patch("views.contract_view.ContractController.get_contract_by_id", side_effect=CrmNotFoundError("no")) as mock_get, \
-            patch("views.contract_view.display_error") as mock_error:
-        view.edit_contract()
-        mock_get.assert_called_once_with(5)
-        mock_error.assert_called_once()
+    view.display_contract_table(contracts, title="My Contracts")
+    tbl = printed['table']
+    assert getattr(tbl, 'title', None) == 'My Contracts'
+    assert tbl.row_count == 2
 
 
-def test_contracts_view_edit_invalid_id(session):
-    from views.contract_view import ContractsView
+def test_display_contract_table_empty(monkeypatch):
+    fake_console = make_console()
+    called = {}
+    # intercept display_info
+    monkeypatch.setattr(
+        'views.contract_view.display_info',
+        lambda msg, clear=False: called.setdefault('info', (msg, clear))
+    )
+    view = ContractsView(user=None, console=fake_console)
 
-    console = _make_console()
-    console.input.return_value = "xyz"
-    view = ContractsView(user=MagicMock(role=MagicMock(
-        value="gestion")), console=console, session=session)
-    with patch("views.contract_view.display_error") as mock_error:
-        view.edit_contract()
-        mock_error.assert_called_once_with("Invalid ID")
+    view.display_contract_table([], title="Whatever")
+    assert called['info'] == ("No contracts found.", False)
+
+
+def test_prompt_new_contract_success(monkeypatch):
+    fake_console = make_console()
+    fake_console.input.side_effect = ['12', '123.45', 'y', '2025-12-31']
+    view = ContractsView(user=None, console=fake_console)
+
+    data = view.prompt_new_contract()
+    assert data == {
+        'client_id': 12,
+        'amount':    Decimal('123.45'),
+        'is_signed': True,
+        'end_date':  '2025-12-31',
+    }
+
+
+def test_prompt_new_contract_invalid_client(monkeypatch):
+    fake_console = make_console()
+    fake_console.input.return_value = 'abc'
+    view = ContractsView(user=None, console=fake_console)
+    with pytest.raises(CrmInvalidValue, match="Client ID must be a positive integer."):
+        view.prompt_new_contract()
+
+
+def test_prompt_new_contract_invalid_amount(monkeypatch):
+    fake_console = make_console()
+    fake_console.input.side_effect = ['12', 'not-a-number', 'y', '2025-12-31']
+    view = ContractsView(user=None, console=fake_console)
+    with pytest.raises(CrmInvalidValue, match="Total amount must be a number."):
+        view.prompt_new_contract()
+
+
+def test_prompt_contract_id_valid(monkeypatch):
+    fake_console = make_console()
+    fake_console.input.return_value = '7'
+    view = ContractsView(user=None, console=fake_console)
+    assert view.prompt_contract_id() == 7
+
+
+def test_prompt_contract_id_invalid(monkeypatch):
+    fake_console = make_console()
+    fake_console.input.return_value = 'xyz'
+    view = ContractsView(user=None, console=fake_console)
+    with pytest.raises(CrmInvalidValue, match="Invalid ID"):
+        view.prompt_contract_id()
+
+
+def test_prompt_edit_contract(monkeypatch):
+    fake_console = make_console()
+    fake_console.input.side_effect = ['', '300', 'y', '2026-01-01']
+    dummy = DummyContract(1, 'C', Decimal('100'), Decimal('50'), False, date(2025, 1, 1))
+    view = ContractsView(user=None, console=fake_console)
+
+    result = view.prompt_edit_contract(dummy)
+    assert result == {
+        'amount':    None,
+        'remaining': Decimal('300'),
+        'is_signed': True,
+        'end_date':  '2026-01-01',
+    }
+
+
+def test_show_messages(monkeypatch):
+    fake_console = make_console()
+    view = ContractsView(user=None, console=fake_console)
+    called = {}
+    # intercept display_success / display_error
+    monkeypatch.setattr(
+        'views.contract_view.display_success',
+        lambda msg: called.setdefault('ok', msg)
+    )
+    monkeypatch.setattr(
+        'views.contract_view.display_error',
+        lambda msg: called.setdefault('err', msg)
+    )
+
+    view.show_success('Yay!')
+    view.show_error('Oops!')
+    assert called == {'ok': 'Yay!', 'err': 'Oops!'}

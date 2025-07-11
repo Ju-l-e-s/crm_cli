@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock
-
 import pytest
+
+from controllers.services.authorization import requires_role, requires_self_or_role, get_event_owner_id
 from exceptions import CrmAuthenticationError, CrmNotFoundError
 from exceptions import CrmForbiddenAccessError
-from controllers.services.authorization import requires_role, requires_self_or_role, get_event_owner_id
 
 
 @requires_role("gestion")
