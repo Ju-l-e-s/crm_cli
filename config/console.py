@@ -1,6 +1,6 @@
-# config/console.py
 import os
 import platform
+
 from rich.console import Console
 
 class CustomConsole(Console):
