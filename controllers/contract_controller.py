@@ -1,43 +1,152 @@
-from typing import List, Type
+from datetime import datetime
+from decimal import Decimal
+from typing import Any
+
 from sqlalchemy.orm import Session
 
-from datetime import datetime
-from controllers.services.auth import get_current_user
-from controllers.services.authorization import requires_role, requires_ownership_or_role, get_contract_owner_id
-from exceptions import CrmInvalidValue, CrmNotFoundError, CrmIntegrityError
-from models.contract import Contract
-from controllers.repositories.contract_repository import ContractRepository
+from config.sentry_logging import capture_event
 from controllers.repositories.client_repository import ClientRepository
+from controllers.repositories.contract_repository import ContractRepository
+from controllers.services.authorization import (
+    get_contract_owner_id,
+    requires_ownership_or_role,
+    requires_role,
+)
 from controllers.validators.validators import validate_amount, validate_date
-from decimal import Decimal
+from exceptions import CrmInvalidValue, CrmIntegrityError, CrmNotFoundError
+from models.contract import Contract
+import views.contract_view as contract_view
 
 
 class ContractController:
-    def __init__(self, session: Session):
+    """
+    Controller for contract management flows: list, add, edit.
+    """
+
+    def __init__(self, session: Session, current_user: Any, console: Any) -> None:
+        """
+        Initialize the ContractController.
+
+        Args:
+            session (Session): Database session.
+            current_user: The currently authenticated user.
+            console: Console interface for I/O operations.
+        """
         self.session = session
+        self.current_user = current_user
+        self.console = console
+        self.repo = ContractRepository(session)
+        self.client_repo = ClientRepository(session)
+        self.view = contract_view.ContractsView(current_user, console)
+
+    def show_menu(self) -> None:
+        """
+        Display the contracts menu and loop until 'Back' is chosen.
+        """
+        while True:
+            choice = self.view.show_menu(self.current_user.role.value)
+            if choice == "List all contracts":
+                self.console.clear()
+                self.list_all_contracts()
+            elif choice == "List my contracts":
+                self.console.clear()
+                self.list_by_commercial()
+            elif choice == "List unsigned contracts":
+                self.console.clear()
+                self.list_unsigned_contracts()
+            elif choice == "List unpaid contracts":
+                self.console.clear()
+                self.list_unpaid_contracts()
+            elif choice == "Add contract":
+                self.console.clear()
+                self.add_contract()
+            elif choice == "Edit contract":
+                self.console.clear()
+                self.edit_contract()
+            elif choice == "Back":
+                break
+
+    def list_all_contracts(self) -> None:
+        """
+        List all contracts (all roles).
+        """
+        ctrs = self.repo.list_all()
+        self.view.display_contract_table(ctrs, title="All Contracts")
+
+    @requires_role("commercial")
+    def list_by_commercial(self) -> None:
+        """
+        List contracts for the current commercial user.
+        """
+        ctrs = self.repo.list_by_commercial(self.current_user.id)
+        self.view.display_contract_table(ctrs, title="My Contracts")
+
+    @requires_role("commercial")
+    def list_unsigned_contracts(self) -> None:
+        """
+        List all unsigned contracts for the current commercial user.
+        """
+        ctrs = self.repo.list_all()
+        filtered = [c for c in ctrs if not c.is_signed]
+        self.view.display_contract_table(filtered, title="Unsigned Contracts")
+
+    @requires_role("commercial")
+    def list_unpaid_contracts(self) -> None:
+        """
+        List all contracts not yet fully paid for the current commercial user.
+        """
+        ctrs = self.repo.list_all()
+        filtered = [c for c in ctrs if c.remaining_amount > 0]
+        self.view.display_contract_table(filtered, title="Unpaid Contracts")
 
     @requires_role("gestion")
-    def create_contract(self, client_id: int, amount: Decimal, is_signed: bool, end_date: str) -> Contract:
+    def add_contract(self) -> None:
         """
-        Creates a new contract associated with a client.
+        Prompt and create a new contract, then display result or error.
+        """
+        try:
+            data = self.view.prompt_new_contract()
+            contract = self._create_contract(**data)
+            capture_event("Contract created", level="info",
+                          contract_id=contract.id)
+            self.view.show_success(f"Created contract ID {contract.id}")
+        except (CrmInvalidValue, CrmNotFoundError) as e:
+            capture_event("Contract creation failed",
+                          level="error", reason=str(e))
+            self.view.show_error(str(e))
 
-        :param client_id: ID of the client for the contract.
-        :param amount: Total amount of the contract.
-        :param is_signed: Signed status of the contract.
-        :param end_date: End date of the contract (YYYY-MM-DD).
-        :return: The created contract.
+    @requires_role("gestion")
+    def _create_contract(
+        self,
+        client_id: int,
+        amount: Decimal,
+        is_signed: bool,
+        end_date: str
+    ) -> Contract | None:
         """
-        # Input validation
+        Create a new contract in the database.
+
+        Args:
+            client_id: ID of the client.
+            amount: Total amount of the contract.
+            is_signed: Whether the contract is signed.
+            end_date: End date (YYYY-MM-DD).
+
+        Returns:
+            Contract: The created Contract.
+
+        Raises:
+            CrmInvalidValue: If any field is invalid.
+            CrmNotFoundError: If the client does not exist.
+            CrmIntegrityError: If saving fails.
+        """
         total_amount = validate_amount(amount)
         end_dt = validate_date(end_date)
 
-        # Ensure client exists
-        client = ClientRepository(self.session).get_by_id(client_id)
+        client = self.client_repo.get_by_id(client_id)
         if not client:
             raise CrmNotFoundError("Client")
 
-
-        # Build domain model
         contract = Contract(
             client_id=client_id,
             commercial_id=client.commercial_id,
@@ -45,65 +154,92 @@ class ContractController:
             remaining_amount=total_amount,
             creation_date=datetime.now(),
             end_date=end_dt,
-            is_signed=is_signed
+            is_signed=is_signed,
         )
         try:
-            return ContractRepository(self.session).save(contract)
-        except Exception as e:
-            raise CrmIntegrityError(f"Could not create contract: {e}") from e
-
-    def list_all_contracts(self) -> List[Type[Contract]]:
-        """
-        Returns all contracts in the system.
-        """
-        return ContractRepository(self.session).list_all()
-
-    @requires_role("commercial")
-    def list_by_commercial(self) -> List[Type[Contract]]:
-        """
-        Lists contracts managed by the current commercial user.
-        """
-        user = get_current_user(self.session)
-        return ContractRepository(self.session).list_by_commercial(user.id)
+            return self.repo.save(contract)
+        except CrmIntegrityError as e:
+            capture_event("Contract creation failed",
+                          level="error", reason=str(e))
+            self.view.show_error(str(e))
 
     def get_contract_by_id(self, contract_id: int) -> Contract:
         """
-        Retrieves a contract by its ID.
-        :raises CrmInvalidValue: if not found.
+        Retrieve a single contract by ID or raise if not found.
+
+        Args:
+            contract_id: ID of the contract.
+
+        Returns:
+            Contract: The found Contract.
+
+        Raises:
+            CrmNotFoundError: If no contract with that ID exists.
         """
-        contract = ContractRepository(self.session).get_by_id(contract_id)
+        contract = self.repo.get_by_id(contract_id)
         if not contract:
             raise CrmNotFoundError("Contract")
         return contract
 
-    @requires_ownership_or_role(get_contract_owner_id, 'gestion')
-    def update_contract(self, contract_id: int, amount: Decimal = None, is_signed: bool = None, remaining: Decimal = None, end_date: str = None) -> Contract:
+    def edit_contract(self) -> None:
         """
-        Updates an existing contract.
+        Prompt and update an existing contract, then display result or error.
+        """
+        try:
+            cid = self.view.prompt_contract_id()
+            contract = self.get_contract_by_id(cid)
+            data = self.view.prompt_edit_contract(contract)
+            updated = self._update_contract(contract_id=cid, **data)
+            capture_event("Contract updated", level="info",
+                          contract_id=updated.id)
+            self.view.show_success(f"Updated contract ID {updated.id}")
+        except (CrmInvalidValue, CrmNotFoundError) as e:
+            capture_event("Contract update failed",
+                          level="error", reason=str(e))
+            self.view.show_error(str(e))
 
-        :param contract_id: ID of the contract.
-        :param amount: New total amount (optional).
-        :param is_signed: New signed status (optional).
-        :param remaining: New remaining amount (optional).
-        :param end_date: New end date (YYYY-MM-DD, optional).
-        :return: The updated contract.
+    @requires_ownership_or_role(get_contract_owner_id, 'gestion')
+    def _update_contract(
+        self,
+        contract_id: int,
+        amount: Decimal = None,
+        is_signed: bool = None,
+        remaining: Decimal = None,
+        end_date: str = None
+    ) -> Contract:
         """
-        repo = ContractRepository(self.session)
+        Update an existing contract.
+
+        Args:
+            contract_id: ID of the contract to update.
+            amount: Total amount of the contract.
+            is_signed: Whether the contract is signed.
+            remaining: Remaining amount of the contract.
+            end_date: End date (YYYY-MM-DD).
+
+        Returns:
+            Contract: The updated Contract.
+
+        Raises:
+            CrmInvalidValue: If any field is invalid.
+            CrmNotFoundError: If the contract does not exist.
+            CrmIntegrityError: If saving fails.
+        """
+        repo = self.repo
         contract = repo.get_by_id(contract_id)
         if not contract:
             raise CrmNotFoundError("Contract")
 
-        # Validate and assign values
         if amount is not None:
             contract.total_amount = validate_amount(amount)
-        if is_signed is not None:
-            contract.is_signed = is_signed
         if remaining is not None:
             contract.remaining_amount = validate_amount(remaining)
+        if is_signed is not None:
+            contract.is_signed = is_signed
         if end_date is not None:
             contract.end_date = validate_date(end_date)
 
         try:
-            return repo.save(contract)
+            return self.repo.save(contract)
         except Exception as e:
             raise CrmIntegrityError(f"Could not update contract: {e}") from e
