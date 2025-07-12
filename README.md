@@ -3,12 +3,11 @@
 A command-line CRM built for **Epic Events** to manage clients, contracts and events.  
 Designed with role-based permissions for the commercial, support and management teams.
 
-
 ## Technology
 
-- Python ≥ 3.9
+- Python ≥ 3.11
 - Poetry for dependency management
-- SQLite (default) via SQLAlchemy ORM – easy switch to other RDBMS
+- SQLite via SQLAlchemy ORM
 - Menu-driven interface built with custom view system
 - Sentry SDK for logging
 
@@ -18,20 +17,54 @@ Designed with role-based permissions for the commercial, support and management 
 
    ```bash
    git clone https://github.com/Ju-l-e-s/crm_cli.git
+   cd crm_cli
+   poetry shell
    poetry install
    ```
 
-2. **Set up the database**
+2. **Environment Configuration**
+
+   Create a `.env` file in the root directory with the following variables:
+
+   ```env
+   # JWT Configuration
+   JWT_SECRET=your_jwt_secret_key_here
+   JWT_EXPIRES_IN=86400  # Token expiration time in seconds (24 hours)
+
+   # Sentry Configuration (for error tracking)
+   SENTRY_DSN=your_sentry_dsn_here
+   DISABLE_SENTRY=1  # Set to 1 to disable Sentry
+
+   # Application Environment
+   APP_ENV=dev
+   ```
+
+3. **Set up the database**
 
    ```bash
    poetry run python database/create_db.py
    poetry run python seed.py
    ```
 
-3. **Run the application**
+4. **Run the application**
    ```bash
    poetry run python main.py
    ```
+
+## Test Data & Credentials
+
+The database is populated with sample data using the seed script. It contains 6 users (2 of each role), 2 clients, 2 contracts, and 2 events.
+
+### Test User Credentials
+
+| Role       | Email           | Password      |
+| ---------- | --------------- | ------------- |
+| Commercial | lisa@test.com   | Azertyuiop123 |
+| Commercial | marge@test.com  | Azertyuiop123 |
+| Management | homer@test.com  | Azertyuiop123 |
+| Management | abram@test.com  | Azertyuiop123 |
+| Support    | bart@test.com   | Azertyuiop123 |
+| Support    | maggie@test.com | Azertyuiop123 |
 
 ## Usage
 
@@ -39,7 +72,7 @@ Designed with role-based permissions for the commercial, support and management 
    ```bash
    poetry run python main.py
    ```
-2. Follow the on-screen menus to navigate through the application
+2. Follow the menus to navigate through the application
 3. Main menu options include:
 
    - Authentication (login/logout)
@@ -50,7 +83,7 @@ Designed with role-based permissions for the commercial, support and management 
 
    The interface is intuitive and will guide you through each operation with clear prompts.
 
-## Roles & Permissions (Least Privilege)
+## Roles & Permissions
 
 | Role       | Clients   | Contracts | Events         | Users |
 | ---------- | --------- | --------- | -------------- | ----- |
