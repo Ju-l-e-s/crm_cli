@@ -13,7 +13,7 @@ from controllers.services.authorization import (
     requires_role,
 )
 from controllers.validators.validators import validate_amount, validate_date
-from exceptions import CrmInvalidValue, CrmIntegrityError, CrmNotFoundError
+from exceptions import CrmInvalidValue, CrmIntegrityError, CrmNotFoundError, CrmForbiddenAccessError
 from models.contract import Contract
 import views.contract_view as contract_view
 
@@ -197,6 +197,11 @@ class ContractController:
             capture_event("Contract update failed",
                           level="error", reason=str(e))
             self.view.show_error(str(e))
+        except CrmForbiddenAccessError as e:
+            capture_event("Contract update failed",
+                          level="error", reason=str(e))
+            self.view.show_error("You can only update your own contracts.")
+
 
     @requires_ownership_or_role(get_contract_owner_id, 'gestion')
     def _update_contract(
