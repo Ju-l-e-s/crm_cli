@@ -93,6 +93,71 @@ The database is populated with sample data using the seed script. It contains 6 
 
 _R = read, W = write, D = delete_
 
+## Project Structure
+
+```
+crm_cli/
+│
+├── config/                        # Application configuration
+│   ├── console.py                # Custom console interface settings
+│   └── sentry_logging.py         # Error tracking configuration
+│
+├── controllers/                   # Business logic
+│   ├── repositories/             # Data access layer
+│   │   ├── client_repository.py
+│   │   ├── contract_repository.py
+│   │   ├── event_repository.py
+│   │   └── user_repository.py
+│   │
+│   ├── services/                 # Business services
+│   │   ├── auth.py
+│   │   ├── authorization.py
+│   │   └── token_cache.py
+│   │
+│   ├── validators/               # Input validation
+│   │   └── validators.py
+│   │
+│   ├── auth_controller.py
+│   ├── client_controller.py
+│   ├── contract_controller.py
+│   ├── event_controller.py
+│   ├── menu_controller.py
+│   └── user_controller.py
+│
+├── database/  # Database files
+│   ├── create_db.py 
+│   ├── session.py                   
+│   └── test.db
+│
+├── models/                       # Data models
+│   ├── base.py
+│   ├── client.py
+│   ├── contract.py
+│   ├── event.py
+│   └── user.py
+│
+├── tests/
+│   ├── integration/              # Integration tests
+│   └── unit/                     # Unit tests
+│
+├── views/                        # CLI interfaces
+│   ├── auth_view.py
+│   ├── base.py
+│   ├── client_view.py
+│   ├── contract_view.py
+│   ├── event_view.py
+│   ├── menu_view.py
+│   └── user_view.py
+│
+├── .env                         # Environment variables
+├── .gitignore
+├── README.md
+├── main.py                     # Application entry point
+├── poetry.lock
+├── pyproject.toml             # Dependencies
+└── requirements.txt
+```
+
 ## Security Notes
 
 - ORM queries protect against SQL injection.
