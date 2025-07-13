@@ -71,21 +71,6 @@ class ClientRepository:
             self.session.rollback()
             raise
 
-    def delete(self, client: Client) -> None:
-        """Delete a client from the database.
-
-        Args:
-            client (Client): The Client object to delete.
-
-        Raises:
-            Exception: If there is an error during database operations.
-        """
-        try:
-            self.session.delete(client)
-            self.session.commit()
-        except IntegrityError:
-            self.session.rollback()
-            raise
 
     def list_all(self) -> list[Type[Client]]:
         """Retrieve all clients from the database.

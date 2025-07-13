@@ -17,7 +17,7 @@ from controllers.validators.validators import (
     validate_name,
     validate_phone,
 )
-from exceptions import CrmInvalidValue, CrmNotFoundError
+from exceptions import CrmInvalidValue, CrmNotFoundError, CrmForbiddenAccessError
 from models.client import Client
 from models.user import User
 import views.client_view as client_view
@@ -25,7 +25,7 @@ import views.client_view as client_view
 
 class ClientController:
     """
-    Controller for client management flows: list, add, edit, delete.
+    Controller for client management flows: list, add, edit.
     """
 
     def __init__(self, session: Session, current_user: User, console: Console):
@@ -58,8 +58,6 @@ class ClientController:
                 self.add_client()
             elif choice == "Edit client":
                 self.edit_client()
-            elif choice == "Delete client":
-                self.delete_client()
             elif choice == "Back":
                 break
 
@@ -138,6 +136,9 @@ class ClientController:
         except CrmInvalidValue as e:
             capture_event("Client update failed", level="error", reason=str(e))
             self.view.show_error(str(e))
+        except CrmForbiddenAccessError as e:
+            capture_event("Client update failed, user not authorized", level="error", reason=str(e))
+            self.view.show_error("You can only update your own clients.")
 
     @requires_ownership_or_role(get_client_owner_id, 'gestion')
     def _update_client(self, client_id: int, fullname: str, email: str, phone: str, company: str) -> Client:
@@ -174,41 +175,6 @@ class ClientController:
         client.company = company
 
         return self.repo.save(client)
-
-    def delete_client(self) -> None:
-        """
-        Prompt and delete a client, then display result or error.
-        """
-        try:
-            client_id = self.view.prompt_client_id(edit=False)
-            if not self.get_client_by_id(client_id):
-                raise CrmNotFoundError("Client")
-            confirm = self.view.prompt_delete_confirmation(client_id)
-            if not confirm:
-                self.view.show_info("Operation cancelled.")
-                return
-            self._delete_client(client_id=client_id)
-            capture_event("Client deleted", level="info", client_id=client_id)
-            self.view.show_success(f"Client ID {client_id} has been deleted.")
-        except CrmInvalidValue as e:
-            capture_event("Client deletion failed",
-                          level="error", reason=str(e))
-            self.view.show_error("Please enter a valid client ID (number).")
-        except CrmNotFoundError as e:
-            capture_event("Client deletion failed",
-                          level="info", reason=str(e))
-            self.view.show_error(str(e))
-
-    @requires_ownership_or_role(get_client_owner_id, 'gestion')
-    def _delete_client(self, client_id: int) -> None:
-        """
-        Deletes the client with the given ID.
-
-        Args:
-            client_id (int): The ID of the client to delete.
-        """
-        client = self.get_client_by_id(client_id)
-        self.repo.delete(client)
 
     def list_all_clients(self):
         """

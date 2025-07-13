@@ -164,26 +164,3 @@ def test_update_client_not_found(session, mock_auth, seeded_user):
         with pytest.raises(CrmNotFoundError, match="Client not found.") as exc:
             controller._update_client(123, "N", "n@e.com", "+1", "C")
     assert 'Client not found.' in str(exc.value)
-
-
-def test_delete_client_success(session, mock_auth, seeded_user_commercial):
-    controller = ClientController(
-        session, seeded_user_commercial, make_console())
-    controller.view.prompt_client_id = MagicMock(return_value=42)
-    controller.view.prompt_delete_confirmation = MagicMock(return_value=True)
-    with patch('controllers.client_controller.ClientRepository.get_by_id', return_value=Client(fullname="", email="", phone="", company="", commercial_id=seeded_user_commercial.id)), \
-            patch('controllers.client_controller.ClientRepository.delete') as mock_del:
-        controller._delete_client(client_id=42)
-        mock_del.assert_called_once()
-
-
-def test_delete_client_cancelled(session, mock_auth, seeded_user_commercial):
-    controller = ClientController(
-        session, seeded_user_commercial, make_console())
-    controller.view.prompt_client_id = MagicMock(return_value=100)
-    controller.view.prompt_delete_confirmation = MagicMock(return_value=False)
-
-    # check that delete is never called
-    with patch('controllers.client_controller.ClientRepository.delete') as mock_del:
-        controller.delete_client()
-        mock_del.assert_not_called()
